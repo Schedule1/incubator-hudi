@@ -37,8 +37,8 @@ import scala.concurrent.{Await, Future}
   */
 class DataSourceTest extends AssertionsForJUnit {
 
-  var spark: SparkSession = null
-  var dataGen: HoodieTestDataGenerator = null
+  var spark: SparkSession = _
+  var dataGen: HoodieTestDataGenerator = _
   val commonOpts = Map(
     "hoodie.insert.shuffle.parallelism" -> "4",
     "hoodie.upsert.shuffle.parallelism" -> "4",
@@ -47,8 +47,8 @@ class DataSourceTest extends AssertionsForJUnit {
     DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY -> "timestamp",
     HoodieWriteConfig.TABLE_NAME -> "hoodie_test"
   )
-  var basePath: String = null
-  var fs: FileSystem = null
+  var basePath: String = _
+  var fs: FileSystem = _
 
   @Before def initialize() {
     spark = SparkSession.builder
@@ -58,9 +58,102 @@ class DataSourceTest extends AssertionsForJUnit {
       .getOrCreate
     dataGen = new HoodieTestDataGenerator()
     val folder = new TemporaryFolder
-    folder.create
+    folder.create()
     basePath = folder.getRoot.getAbsolutePath
     fs = FSUtils.getFs(basePath, spark.sparkContext.hadoopConfiguration)
+  }
+
+  @Test def testInsertBothOldAndNew(): Unit = {
+
+    // Insert Operation
+    val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("000", 100)).toList
+    val inputDF1: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(records1, 2))
+    inputDF1.write.format("com.uber.hoodie")
+      .options(commonOpts)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.INSERT_OPERATION_OPT_VAL)
+      .mode(SaveMode.Overwrite)
+      .save(basePath)
+
+    val commitInstantTime1: String = HoodieDataSourceHelpers.latestCommit(fs, basePath)
+
+    def validateBothViews(n: Int): Unit = {
+
+      // Read RO View TODO: always need to specify /*/* ... ?
+      // TODO: this looks like a flawed design, the the number of /* depends on content of the table
+      // as a result it is useless in general case, incremental view type must be enabled at all time.
+      val hoodieROViewDF = spark.read.format("com.uber.hoodie")
+        .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_READ_OPTIMIZED_OPT_VAL)
+        .schema(inputDF1.schema)
+        .load(basePath + "/*/*/*/*")
+      assertEquals(inputDF1.schema.fieldNames.seq, hoodieROViewDF.schema.fieldNames.seq)
+      assertEquals(n, hoodieROViewDF.count())
+
+      val hoodieIncViewDF = spark.read.format("com.uber.hoodie")
+        .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+        .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, "000")
+        .schema(inputDF1.schema)
+        .load(basePath)
+//      assertEquals(inputDF1.schema.fieldNames.seq, hoodieIncViewDF.schema.fieldNames.seq) TODO: how to comply?
+      assertEquals(n, hoodieIncViewDF.count())
+    }
+
+    validateBothViews(100)
+
+    val oldRecords = DataSourceTestUtils.convertToStringList(dataGen.generateUpdates("001", 100)).toList
+    val oldDF: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(oldRecords, 2))
+
+    val newRecords = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("001", 20)).toList
+    val newDF: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(newRecords, 2))
+
+    val inputDF2 = oldDF.union(newDF)
+
+    val uniqueKeyCnt = oldDF.select("_row_key").distinct().count()
+
+    val inputKeyStrs = Seq(inputDF1, inputDF2).map {
+      df =>
+        df.select("_row_key").distinct().rdd.map(_.getAs[String](0)).collect().sorted.mkString("\n")
+    }
+
+    // Upsert Operation
+    inputDF2.write.format("com.uber.hoodie")
+      .options(commonOpts)
+      .mode(SaveMode.Append)
+      .save(basePath)
+
+    val commitInstantTime2: String = HoodieDataSourceHelpers.latestCommit(fs, basePath)
+
+    validateBothViews(120)
+
+    //    val hoodieRTViewDF2 = spark.read.format("com.uber.hoodie")
+    //      .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_REALTIME_OPT_VAL)
+    ////      .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, "000")
+    //      .load(basePath)
+    //    assertEquals(120, hoodieRTViewDF2.count())
+
+    // Read Incremental View
+    // we have 2 commits, try pulling the first commit (which is not the latest)
+    val firstCommit = HoodieDataSourceHelpers.listCommitsSince(fs, basePath, "000").get(0)
+    val hoodieIncViewDF1 = spark.read.format("com.uber.hoodie")
+      .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+      .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, "000")
+      .option(DataSourceReadOptions.END_INSTANTTIME_OPT_KEY, firstCommit)
+      .load(basePath)
+    assertEquals(100, hoodieIncViewDF1.count())
+
+    var countsPerCommit = hoodieIncViewDF1.groupBy("_hoodie_commit_time").count().collect()
+    assertEquals(1, countsPerCommit.length)
+    assertEquals(firstCommit, countsPerCommit(0).get(0))
+
+    // pull the latest commit
+    val hoodieIncViewDF2 = spark.read.format("com.uber.hoodie")
+      .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
+      .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitInstantTime1)
+      .load(basePath)
+
+    assertEquals(uniqueKeyCnt + 20, hoodieIncViewDF2.count()) // 100 records must be pulled
+    countsPerCommit = hoodieIncViewDF2.groupBy("_hoodie_commit_time").count().collect()
+    assertEquals(1, countsPerCommit.length)
+    assertEquals(commitInstantTime2, countsPerCommit(0).get(0))
   }
 
   @Test def testCopyOnWriteStorage() {
@@ -78,7 +171,7 @@ class DataSourceTest extends AssertionsForJUnit {
 
     // Read RO View
     val hoodieROViewDF1 = spark.read.format("com.uber.hoodie")
-      .load(basePath + "/*/*/*/*");
+      .load(basePath + "/*/*/*/*")
     assertEquals(100, hoodieROViewDF1.count())
 
     val records2 = DataSourceTestUtils.convertToStringList(dataGen.generateUpdates("001", 100)).toList
@@ -96,19 +189,19 @@ class DataSourceTest extends AssertionsForJUnit {
 
     // Read RO View
     val hoodieROViewDF2 = spark.read.format("com.uber.hoodie")
-      .load(basePath + "/*/*/*/*");
+      .load(basePath + "/*/*/*/*")
     assertEquals(100, hoodieROViewDF2.count()) // still 100, since we only updated
 
     // Read Incremental View
     // we have 2 commits, try pulling the first commit (which is not the latest)
-    val firstCommit = HoodieDataSourceHelpers.listCommitsSince(fs, basePath, "000").get(0);
+    val firstCommit = HoodieDataSourceHelpers.listCommitsSince(fs, basePath, "000").get(0)
     val hoodieIncViewDF1 = spark.read.format("com.uber.hoodie")
       .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
       .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, "000")
       .option(DataSourceReadOptions.END_INSTANTTIME_OPT_KEY, firstCommit)
-      .load(basePath);
+      .load(basePath)
     assertEquals(100, hoodieIncViewDF1.count()) // 100 initial inserts must be pulled
-    var countsPerCommit = hoodieIncViewDF1.groupBy("_hoodie_commit_time").count().collect();
+    var countsPerCommit = hoodieIncViewDF1.groupBy("_hoodie_commit_time").count().collect()
     assertEquals(1, countsPerCommit.length)
     assertEquals(firstCommit, countsPerCommit(0).get(0))
 
@@ -116,10 +209,10 @@ class DataSourceTest extends AssertionsForJUnit {
     val hoodieIncViewDF2 = spark.read.format("com.uber.hoodie")
       .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY, DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL)
       .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY, commitInstantTime1)
-      .load(basePath);
+      .load(basePath)
 
     assertEquals(uniqueKeyCnt, hoodieIncViewDF2.count()) // 100 records must be pulled
-    countsPerCommit = hoodieIncViewDF2.groupBy("_hoodie_commit_time").count().collect();
+    countsPerCommit = hoodieIncViewDF2.groupBy("_hoodie_commit_time").count().collect()
     assertEquals(1, countsPerCommit.length)
     assertEquals(commitInstantTime2, countsPerCommit(0).get(0))
   }
@@ -205,12 +298,12 @@ class DataSourceTest extends AssertionsForJUnit {
     // define the source of streaming
     val streamingInput =
       spark.readStream
-      .schema(inputDF1.schema)
-      .json(sourcePath)
+        .schema(inputDF1.schema)
+        .json(sourcePath)
 
     val f1 = Future {
       println("streaming starting")
-    //'writeStream' can be called only on streaming Dataset/DataFrame
+      //'writeStream' can be called only on streaming Dataset/DataFrame
       streamingInput
         .writeStream
         .format("com.uber.hoodie")
