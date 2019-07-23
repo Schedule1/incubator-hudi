@@ -156,6 +156,43 @@ class DataSourceTest extends AssertionsForJUnit {
     assertEquals(commitInstantTime2, countsPerCommit(0).get(0))
   }
 
+  @Test def testInsertEmpty(): Unit = {
+
+    import functions._
+
+    val _basePath = basePath + "/empty"
+
+    val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("000", 100)).toList
+    val inputDF1: Dataset[Row] = spark.read.json(spark.sparkContext.parallelize(records1, 2))
+
+    val inputEmpty = inputDF1.filter(lit(1) === lit(0))
+    inputEmpty.write.format("com.uber.hoodie")
+      .options(commonOpts)
+      .option(DataSourceWriteOptions.OPERATION_OPT_KEY, DataSourceWriteOptions.BULK_INSERT_OPERATION_OPT_VAL)
+      .mode(SaveMode.Overwrite)
+      .save(_basePath)
+
+    val read = spark.read.format("com.uber.hoodie")
+      .schema(inputEmpty.schema)
+
+    // Read RO View
+    def hoodieROViewDF1 = read
+      .load(_basePath + "/*/*/*/*")
+
+    //    val hoodieROViewDF1 = read
+    //      .load(basePath)
+
+    assertEquals(0, hoodieROViewDF1.count())
+
+    // Upsert Operation
+    inputDF1.write.format("com.uber.hoodie")
+      .options(commonOpts)
+      .mode(SaveMode.Append)
+      .save(_basePath)
+
+    assertEquals(100, hoodieROViewDF1.count())
+  }
+
   @Test def testCopyOnWriteStorage() {
     // Insert Operation
     val records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("000", 100)).toList

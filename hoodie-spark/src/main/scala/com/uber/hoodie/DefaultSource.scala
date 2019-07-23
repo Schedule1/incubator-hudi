@@ -19,8 +19,9 @@ package com.uber.hoodie
 
 import com.uber.hoodie.DataSourceReadOptions._
 import com.uber.hoodie.exception.HoodieException
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.LogManager
-import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.datasources.DataSource
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.sources._
@@ -28,9 +29,9 @@ import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
 
 /**
-  * Hoodie Spark Datasource, for reading and writing hoodie datasets
-  *
-  */
+ * Hoodie Spark Datasource, for reading and writing hoodie datasets
+ *
+ */
 class DefaultSource extends RelationProvider
   with SchemaRelationProvider
   with CreatableRelationProvider

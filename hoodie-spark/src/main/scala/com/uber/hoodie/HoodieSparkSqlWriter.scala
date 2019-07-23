@@ -108,14 +108,34 @@ private[hoodie] object HoodieSparkSqlWriter {
         hoodieAllIncomingRecords
       }
 
+
+    val basePath = new Path(parameters("path"))
+    val fs = basePath.getFileSystem(sparkContext.hadoopConfiguration)
+    def exists = fs.exists(basePath)
+
+    def initTableIfMissing(): Unit = {
+      // Create the dataset if not present (APPEND mode)
+      if (!exists) {
+        HoodieTableMetaClient.initTableType(sparkContext.hadoopConfiguration, basePath.toString, storageType,
+          tblName.get, "archived")
+
+        val partitionedPathComponents = Seq(
+          basePath.toString
+            .stripSuffix(Path.SEPARATOR)
+        ) ++ (1 to 10).map(_ => "default")
+
+        val partitionedPath: String = partitionedPathComponents.mkString(Path.SEPARATOR)
+
+        fs.mkdirs(new Path(partitionedPath))
+      }
+    }
+
+    initTableIfMissing()
+
     if (hoodieRecords.isEmpty()) {
       log.info("new batch has no new records, skipping...")
       return (true, None)
     }
-
-    val basePath = new Path(parameters("path"))
-    val fs = basePath.getFileSystem(sparkContext.hadoopConfiguration)
-    var exists = fs.exists(basePath)
 
     // Handle various save modes
     if (mode == SaveMode.ErrorIfExists && exists) {
@@ -128,14 +148,9 @@ private[hoodie] object HoodieSparkSqlWriter {
     if (mode == SaveMode.Overwrite && exists) {
       log.warn(s" basePath ${basePath} already exists. Deleting existing data & overwriting with new data.")
       fs.delete(basePath, true)
-      exists = false
     }
 
-    // Create the dataset if not present (APPEND mode)
-    if (!exists) {
-      HoodieTableMetaClient.initTableType(sparkContext.hadoopConfiguration, path.get, storageType,
-        tblName.get, "archived")
-    }
+    initTableIfMissing()
 
     // Create a HoodieWriteClient & issue the write.
     val client = DataSourceUtils.createHoodieClient(jsc, schema.toString, path.get, tblName.get,
