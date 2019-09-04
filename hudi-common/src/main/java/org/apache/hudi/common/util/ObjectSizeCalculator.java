@@ -118,6 +118,14 @@ public class ObjectSizeCalculator {
         getEffectiveMemoryLayoutSpecification();
   }
 
+  public static long getObjectSize(Object obj) {
+    try {
+      return getObjectSizePrimary(obj);
+    } catch (UnsupportedOperationException e) {
+      return  getObjectSizeFallback(obj);
+    }
+  }
+
   /**
    * Given an object, returns the total allocated size, in bytes, of the object
    * and all other objects reachable from it.  Attempts to to detect the current JVM memory layout,
@@ -134,8 +142,12 @@ public class ObjectSizeCalculator {
    * retains.
    * @throws UnsupportedOperationException if the current vm memory layout cannot be detected.
    */
-  public static long getObjectSize(Object obj) throws UnsupportedOperationException {
+  public static long getObjectSizePrimary(Object obj) throws UnsupportedOperationException {
     return obj == null ? 0 : new ObjectSizeCalculator(CurrentLayout.SPEC).calculateObjectSize(obj);
+  }
+
+  public static long getObjectSizeFallback(Object obj) {
+    return 1024L;
   }
 
   // Fixed object header size for arrays.
@@ -367,11 +379,14 @@ public class ObjectSizeCalculator {
   @VisibleForTesting
   static MemoryLayoutSpecification getEffectiveMemoryLayoutSpecification() {
     final String vmName = System.getProperty("java.vm.name");
-    if (vmName == null || !(vmName.startsWith("Java HotSpot(TM) ")
-        || vmName.startsWith("OpenJDK") || vmName.startsWith("TwitterJDK"))) {
-      throw new UnsupportedOperationException(
-          "ObjectSizeCalculator only supported on HotSpot VM");
-    }
+    //    if (vmName == null || !(vmName.startsWith("Java HotSpot(TM) ")
+    //        || vmName.startsWith("OpenJDK") || vmName.startsWith("TwitterJDK"))) {
+    //      throw new UnsupportedOperationException(
+    //          "ObjectSizeCalculator only supported on HotSpot VM");
+    //    }
+
+    boolean notHotSpot = (vmName == null || !(vmName.startsWith("Java HotSpot(TM) ")
+        || vmName.startsWith("OpenJDK") || vmName.startsWith("TwitterJDK")));
 
     final String dataModel = System.getProperty("sun.arch.data.model");
     if ("32".equals(dataModel)) {
@@ -410,7 +425,7 @@ public class ObjectSizeCalculator {
     final String strVmVersion = System.getProperty("java.vm.version");
     final int vmVersion = Integer.parseInt(strVmVersion.substring(0,
         strVmVersion.indexOf('.')));
-    if (vmVersion >= 17) {
+    if (vmVersion >= 17 || (vmVersion >= 2 && notHotSpot)) {
       long maxMemory = 0;
       for (MemoryPoolMXBean mp : ManagementFactory.getMemoryPoolMXBeans()) {
         maxMemory += mp.getUsage().getMax();
