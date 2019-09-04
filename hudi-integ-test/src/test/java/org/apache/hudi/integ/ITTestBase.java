@@ -104,7 +104,7 @@ public abstract class ITTestBase {
         .append("spark-shell --jars ").append(HUDI_SPARK_BUNDLE)
         .append(" --master local[2] --driver-class-path ").append(HADOOP_CONF_DIR)
         .append(" --conf spark.sql.hive.convertMetastoreParquet=false --deploy-mode client  --driver-memory 1G --executor-memory 1G --num-executors 1 ")
-        .append(" --packages com.databricks:spark-avro_2.11:4.0.0 ")
+        .append(" --packages com.databricks:spark-avro_${scala.libversion}:4.0.0 ")
         .append(" -i ").append(commandFile)
         .toString();
   }

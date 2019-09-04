@@ -50,8 +50,21 @@
     <module>packaging/hudi-utilities-bundle</module>
     <module>packaging/hudi-timeline-server-bundle</module>
     <module>docker/hoodie/hadoop</module>
-    <module>hudi-integ-test</module>
+<!--    <module>hudi-integ-test</module>-->
   </modules>
+
+   <distributionManagement>
+    <repository>
+      <id>dp-artifactory-main</id>
+      <name>ip-172-31-9-93.us-west-2.compute.internal-releases</name>
+      <url>http://34.218.183.193:8081/artifactory/maven-staging-local</url>
+    </repository>
+    <snapshotRepository>
+      <id>dp-artifactory-snapshots</id>
+      <name>ip-172-31-9-93.us-west-2.compute.internal-snapshots</name>
+      <url>http://34.218.183.193:8081/artifactory/maven-staging-local</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <licenses>
     <license>
@@ -133,9 +146,9 @@
     <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
     <maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
 
-    <fasterxml.version>2.6.7</fasterxml.version>
+    <fasterxml.version>2.7.9</fasterxml.version>
     <glassfish.version>2.17</glassfish.version>
-    <parquet.version>1.8.1</parquet.version>
+    <parquet.version>1.10.1</parquet.version>
     <junit.version>4.11</junit.version>
     <junit-dep.version>4.10</junit-dep.version>
     <mockito.version>1.10.19</mockito.version>
@@ -146,10 +159,10 @@
     <hive.groupid>org.apache.hive</hive.groupid>
     <hive.version>2.3.1</hive.version>
     <metrics.version>4.0.2</metrics.version>
-    <spark.version>2.1.0</spark.version>
-    <avro.version>1.7.7</avro.version>
-    <scala.version>2.11.8</scala.version>
-    <scala.libversion>2.11</scala.libversion>
+    <spark.version>2.4.4</spark.version>
+    <avro.version>1.8.2</avro.version>
+    <scala.version>2.12.8</scala.version>
+    <scala.libversion>2.12</scala.libversion>
     <scala-maven-plugin.version>3.3.1</scala-maven-plugin.version>
     <scalatest.version>3.0.1</scalatest.version>
     <surefire-log4j.file>file://${project.basedir}/src/test/resources/log4j-surefire.properties</surefire-log4j.file>
@@ -472,7 +485,7 @@
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.module</groupId>
-        <artifactId>jackson-module-scala_2.11</artifactId>
+        <artifactId>jackson-module-scala_${scala.libversion}</artifactId>
         <version>${fasterxml.version}</version>
       </dependency>
 
@@ -519,22 +532,22 @@
       <!-- Spark -->
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-core_2.11</artifactId>
+        <artifactId>spark-core_${scala.libversion}</artifactId>
         <version>${spark.version}</version>
         <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-sql_2.11</artifactId>
+        <artifactId>spark-sql_${scala.libversion}</artifactId>
         <version>${spark.version}</version>
         <scope>provided</scope>
       </dependency>
 
       <!-- Spark (Packages) -->
       <dependency>
-        <groupId>com.databricks</groupId>
-        <artifactId>spark-avro_2.11</artifactId>
-        <version>4.0.0</version>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-avro_${scala.libversion}</artifactId>
+        <version>2.4.4</version>
       </dependency>
 
       <!-- Dropwizard Metrics -->
@@ -739,6 +752,10 @@
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -759,6 +776,10 @@
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -775,6 +796,10 @@
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -786,6 +811,10 @@
           <exclusion>
             <groupId>javax.mail</groupId>
             <artifactId>mail</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -811,6 +840,10 @@
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -827,6 +860,10 @@
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -842,6 +879,10 @@
           <exclusion>
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop-bundle</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -873,6 +914,12 @@
         <artifactId>kryo</artifactId>
         <version>4.0.0</version>
         <scope>test</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>com.thoughtworks.paranamer</groupId>
+        <artifactId>paranamer</artifactId>
+        <version>2.8</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

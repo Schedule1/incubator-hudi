@@ -18,7 +18,8 @@
 
 package org.apache.hudi.utilities.sources;
 
-import kafka.serializer.StringDecoder;
+import java.util.HashMap;
+
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.TypedProperties;
 import org.apache.hudi.utilities.schema.SchemaProvider;
@@ -29,8 +30,9 @@ import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.streaming.kafka.KafkaUtils;
-import org.apache.spark.streaming.kafka.OffsetRange;
+import org.apache.spark.streaming.kafka010.KafkaUtils;
+import org.apache.spark.streaming.kafka010.LocationStrategies;
+import org.apache.spark.streaming.kafka010.OffsetRange;
 
 /**
  * Read json kafka data
@@ -62,7 +64,16 @@ public class JsonKafkaSource extends JsonSource {
   }
 
   private JavaRDD<String> toRDD(OffsetRange[] offsetRanges) {
-    return KafkaUtils.createRDD(sparkContext, String.class, String.class, StringDecoder.class, StringDecoder.class,
-        offsetGen.getKafkaParams(), offsetRanges).values();
+
+    HashMap<String, Object> fixedMap = new HashMap<>();
+    for (String k : offsetGen.getKafkaParams().keySet()) {
+      fixedMap.put(k, (Object) offsetGen.getKafkaParams().get(k));
+    }
+
+    JavaRDD<String> recordRDD = KafkaUtils
+            .createRDD(sparkContext, fixedMap, offsetRanges, LocationStrategies.PreferBrokers())
+            .map(obj -> (String) (obj.value()));
+
+    return recordRDD;
   }
 }
