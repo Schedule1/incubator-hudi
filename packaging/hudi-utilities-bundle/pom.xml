@@ -88,8 +88,8 @@
                   <include>commons-logging:commons-logging</include>
                   <include>org.apache.parquet:parquet-avro</include>
 
-                  <include>com.twitter:bijection-avro_2.11</include>
-                  <include>com.twitter:bijection-core_2.11</include>
+                  <include>com.twitter:bijection-avro_${scala.libversion}</include>
+                  <include>com.twitter:bijection-core_${scala.libversion}</include>
                   <include>org.apache.parquet:parquet-avro</include>
                   <include>io.confluent:kafka-avro-serializer</include>
                   <include>io.confluent:common-config</include>
@@ -97,8 +97,8 @@
                   <include>io.confluent:kafka-schema-registry-client</include>
                   <include>io.dropwizard.metrics:metrics-core</include>
                   <include>io.dropwizard.metrics:metrics-graphite</include>
-                  <include>org.apache.spark:spark-streaming-kafka-0-8_2.11</include>
-                  <include>org.apache.kafka:kafka_2.11</include>
+                  <include>org.apache.spark:spark-streaming-kafka-0-10_${scala.libversion}</include>
+                  <include>org.apache.kafka:kafka_${scala.libversion}</include>
                   <include>com.101tec:zkclient</include>
                   <include>org.apache.kafka:kafka-clients</include>
                   <include>org.apache.hive:hive-common</include>
@@ -260,7 +260,7 @@
     <!-- Fasterxml -->
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
-      <artifactId>jackson-module-scala_2.11</artifactId>
+      <artifactId>jackson-module-scala_${scala.libversion}</artifactId>
     </dependency>
 
     <!-- Avro -->
@@ -278,21 +278,21 @@
     <!-- Spark -->
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_2.11</artifactId>
+      <artifactId>spark-core_${scala.libversion}</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.11</artifactId>
+      <artifactId>spark-sql_${scala.libversion}</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-streaming_2.11</artifactId>
+      <artifactId>spark-streaming_${scala.libversion}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-streaming-kafka-0-8_2.11</artifactId>
+      <artifactId>spark-streaming-kafka-0-10_${scala.libversion}</artifactId>
       <version>${spark.version}</version>
     </dependency>
 
@@ -328,8 +328,8 @@
 
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>bijection-avro_2.11</artifactId>
-      <version>0.9.2</version>
+      <artifactId>bijection-avro_${scala.libversion}</artifactId>
+      <version>0.9.3</version>
     </dependency>
 
     <!-- Kafka -->
