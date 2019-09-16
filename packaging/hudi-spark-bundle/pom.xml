@@ -19,7 +19,7 @@
   <parent>
     <artifactId>hudi</artifactId>
     <groupId>org.apache.hudi</groupId>
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT-s1</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -99,7 +99,7 @@
                   <pattern>org.apache.</pattern>
                   <shadedPattern>org.apache.hudi.org.apache.</shadedPattern>
                   <excludes>
-                    <exclude>com.databricks.spark.**</exclude>
+<!--                    <exclude>com.databricks.spark.**</exclude>-->
                     <exclude>org.apache.avro.**</exclude>
                     <exclude>org.apache.derby.**</exclude>
                     <exclude>org.apache.hadoop.**</exclude>
@@ -178,7 +178,7 @@
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <artifactSet>
                 <excludes>
-                  <exclude>com.databricks:spark-avro_2.11</exclude>
+<!--                  <exclude>com.databricks:spark-avro_${scala.libversion}</exclude>-->
                   <exclude>log4j:*</exclude>
                   <exclude>org.apache.avro:*</exclude>
                   <exclude>org.apache.derby:derby</exclude>
@@ -268,18 +268,18 @@
     <!-- Spark -->
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_2.11</artifactId>
+      <artifactId>spark-core_${scala.libversion}</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.11</artifactId>
+      <artifactId>spark-sql_${scala.libversion}</artifactId>
     </dependency>
 
     <!-- Spark (Packages) -->
     <dependency>
-      <groupId>com.databricks</groupId>
-      <artifactId>spark-avro_2.11</artifactId>
-      <version>4.0.0</version>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-avro_${scala.libversion}</artifactId>
+      <version>2.4.4</version>
     </dependency>
 
     <dependency>
@@ -367,7 +367,7 @@
 
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.11</artifactId>
+      <artifactId>scalatest_${scala.libversion}</artifactId>
       <version>${scalatest.version}</version>
       <scope>test</scope>
     </dependency>

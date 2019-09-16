@@ -21,8 +21,8 @@ import java.nio.ByteBuffer
 import java.sql.{Date, Timestamp}
 import java.util
 
-import com.databricks.spark.avro.SchemaConverters
-import com.databricks.spark.avro.SchemaConverters.IncompatibleSchemaException
+import org.apache.spark.sql.avro.SchemaConverters
+import org.apache.spark.sql.avro.IncompatibleSchemaException
 import org.apache.avro.Schema.Type._
 import org.apache.avro.generic.GenericData.{Fixed, Record}
 import org.apache.avro.generic.{GenericData, GenericRecord}
@@ -314,8 +314,7 @@ object AvroConversionUtils {
         }
       case structType: StructType =>
         val builder = SchemaBuilder.record(structName).namespace(recordNamespace)
-        val schema: Schema = SchemaConverters.convertStructToAvro(
-          structType, builder, recordNamespace)
+        val schema: Schema =  SchemaConverters.toAvroType(structType, nameSpace = recordNamespace, recordName = structName)
         val fieldConverters = structType.fields.map(field =>
           createConverterToAvro(
             field.dataType,
@@ -344,7 +343,7 @@ object AvroConversionUtils {
                                     structName: String,
                                     recordNamespace: String): Schema = {
     val builder = SchemaBuilder.record(structName).namespace(recordNamespace)
-    SchemaConverters.convertStructToAvro(structType, builder, recordNamespace)
+    SchemaConverters.toAvroType(structType, nameSpace = recordNamespace, recordName = structName)
   }
 
   def convertAvroSchemaToStructType(avroSchema: Schema): StructType = {
