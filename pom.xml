@@ -29,7 +29,8 @@
   <groupId>org.apache.hudi</groupId>
   <artifactId>hudi</artifactId>
   <packaging>pom</packaging>
-  <version>0.5.1-SNAPSHOT</version>
+  <version>${revision}</version>
+
   <description>Apache Hudi brings stream style processing on big data</description>
   <url>https://github.com/apache/incubator-hudi</url>
   <name>Hudi</name>
@@ -49,11 +50,11 @@
     <module>packaging/hudi-presto-bundle</module>
     <module>packaging/hudi-utilities-bundle</module>
     <module>packaging/hudi-timeline-server-bundle</module>
-    <module>docker/hoodie/hadoop</module>
-<!--    <module>hudi-integ-test</module>-->
+<!--    <module>docker/hoodie/hadoop</module>-->
+    <!--    <module>hudi-integ-test</module>-->
   </modules>
 
-   <distributionManagement>
+  <distributionManagement>
     <repository>
       <id>dp-artifactory-main</id>
       <name>ip-172-31-9-93.us-west-2.compute.internal-releases</name>
@@ -142,6 +143,8 @@
 
 
   <properties>
+    <revision>0.5.1-SNAPSHOT</revision>
+
     <maven-jar-plugin.version>2.6</maven-jar-plugin.version>
     <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
     <maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
@@ -161,8 +164,10 @@
     <metrics.version>4.0.2</metrics.version>
     <spark.version>2.4.4</spark.version>
     <avro.version>1.8.2</avro.version>
-    <scala.version>2.12.8</scala.version>
-    <scala.libversion>2.12</scala.libversion>
+
+    <scala.version>2.11.12</scala.version>
+    <scala.libversion>2.11</scala.libversion>
+
     <scala-maven-plugin.version>3.3.1</scala-maven-plugin.version>
     <scalatest.version>3.0.1</scalatest.version>
     <surefire-log4j.file>file://${project.basedir}/src/test/resources/log4j-surefire.properties</surefire-log4j.file>
@@ -187,6 +192,31 @@
 
   <build>
     <plugins>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.1.0</version>
+        <executions>
+          <!-- enable flattening -->
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <!-- ensure proper cleanup -->
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.jasig.maven</groupId>
         <artifactId>maven-notice-plugin</artifactId>
@@ -987,20 +1017,20 @@
               <additionalparam>-Xdoclint:none</additionalparam>
             </configuration>
           </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.4</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
- 	  </plugin>
+<!--          <plugin>-->
+<!--            <groupId>org.apache.maven.plugins</groupId>-->
+<!--            <artifactId>maven-gpg-plugin</artifactId>-->
+<!--            <version>1.4</version>-->
+<!--            <executions>-->
+<!--              <execution>-->
+<!--                <id>sign-artifacts</id>-->
+<!--                <phase>verify</phase>-->
+<!--                <goals>-->
+<!--                  <goal>sign</goal>-->
+<!--                </goals>-->
+<!--              </execution>-->
+<!--            </executions>-->
+<!--          </plugin>-->
         </plugins>
       </build>
     </profile>
@@ -1013,6 +1043,27 @@
       </activation>
       <properties>
         <surefire-log4j.file>file://${project.basedir}/src/test/resources/log4j-surefire-quiet.properties</surefire-log4j.file>
+      </properties>
+    </profile>
+
+
+    <profile>
+      <id>scala-suffix</id>
+
+      <!--      experimental, attach scala version to artifact version-->
+      <!--      TODO: canonical way should be attaching scala version to artifact ID, but maven doesn't support it-->
+      <properties>
+        <revision>0.5.1_${scala.libversion}-SNAPSHOT</revision>
+      </properties>
+    </profile>
+
+
+    <profile>
+      <id>scala-2.12</id>
+
+      <properties>
+        <scala.version>2.12.8</scala.version>
+        <scala.libversion>2.12</scala.libversion>
       </properties>
     </profile>
   </profiles>
