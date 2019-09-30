@@ -18,62 +18,58 @@
 
 package org.apache.hudi.utilities;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.HoodieWriteClient;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.util.FSUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.TypedProperties;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HoodieCompactor {
 
-  private static volatile Logger logger = LogManager.getLogger(HoodieCompactor.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieCompactor.class);
   private final Config cfg;
   private transient FileSystem fs;
   private TypedProperties props;
 
   public HoodieCompactor(Config cfg) {
     this.cfg = cfg;
-    this.props = cfg.propsFilePath == null ? UtilHelpers.buildProperties(cfg.configs) :
-        UtilHelpers.readConfig(fs, new Path(cfg.propsFilePath), cfg.configs).getConfig();
+    this.props = cfg.propsFilePath == null ? UtilHelpers.buildProperties(cfg.configs)
+        : UtilHelpers.readConfig(fs, new Path(cfg.propsFilePath), cfg.configs).getConfig();
   }
 
   public static class Config implements Serializable {
-    @Parameter(names = {"--base-path",
-        "-sp"}, description = "Base path for the dataset", required = true)
+    @Parameter(names = {"--base-path", "-sp"}, description = "Base path for the table", required = true)
     public String basePath = null;
     @Parameter(names = {"--table-name", "-tn"}, description = "Table name", required = true)
     public String tableName = null;
-    @Parameter(names = {"--instant-time",
-        "-sp"}, description = "Compaction Instant time", required = true)
+    @Parameter(names = {"--instant-time", "-sp"}, description = "Compaction Instant time", required = true)
     public String compactionInstantTime = null;
-    @Parameter(names = {"--parallelism",
-        "-pl"}, description = "Parallelism for hoodie insert", required = true)
+    @Parameter(names = {"--parallelism", "-pl"}, description = "Parallelism for hoodie insert", required = true)
     public int parallelism = 1;
-    @Parameter(names = {"--schema-file",
-        "-sf"}, description = "path for Avro schema file", required = true)
+    @Parameter(names = {"--schema-file", "-sf"}, description = "path for Avro schema file", required = true)
     public String schemaFile = null;
     @Parameter(names = {"--spark-master", "-ms"}, description = "Spark master", required = false)
     public String sparkMaster = null;
-    @Parameter(names = {"--spark-memory",
-        "-sm"}, description = "spark memory to use", required = true)
+    @Parameter(names = {"--spark-memory", "-sm"}, description = "spark memory to use", required = true)
     public String sparkMemory = null;
     @Parameter(names = {"--retry", "-rt"}, description = "number of retries", required = false)
     public int retry = 0;
     @Parameter(names = {"--schedule", "-sc"}, description = "Schedule compaction", required = false)
     public Boolean runSchedule = false;
-    @Parameter(names = {"--strategy", "-st"}, description = "Stratgey Class", required = false)
+    @Parameter(names = {"--strategy", "-st"}, description = "Strategy Class", required = false)
     public String strategyClassName = null;
     @Parameter(names = {"--help", "-h"}, help = true)
     public Boolean help = false;
@@ -87,9 +83,9 @@ public class HoodieCompactor {
     public List<String> configs = new ArrayList<>();
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     final Config cfg = new Config();
-    JCommander cmd = new JCommander(cfg, args);
+    JCommander cmd = new JCommander(cfg, null, args);
     if (cfg.help || args.length == 0) {
       cmd.usage();
       System.exit(1);
@@ -114,24 +110,24 @@ public class HoodieCompactor {
         }
       } while (ret != 0 && retry-- > 0);
     } catch (Throwable t) {
-      logger.error(t);
+      LOG.error(t);
     }
     return ret;
   }
 
   private int doCompact(JavaSparkContext jsc) throws Exception {
-    //Get schema.
+    // Get schema.
     String schemaStr = UtilHelpers.parseSchema(fs, cfg.schemaFile);
-    HoodieWriteClient client = UtilHelpers.createHoodieClient(jsc, cfg.basePath, schemaStr, cfg.parallelism,
-        Option.empty(), props);
+    HoodieWriteClient client =
+        UtilHelpers.createHoodieClient(jsc, cfg.basePath, schemaStr, cfg.parallelism, Option.empty(), props);
     JavaRDD<WriteStatus> writeResponse = client.compact(cfg.compactionInstantTime);
     return UtilHelpers.handleErrors(jsc, cfg.compactionInstantTime, writeResponse);
   }
 
   private int doSchedule(JavaSparkContext jsc) throws Exception {
-    //Get schema.
-    HoodieWriteClient client = UtilHelpers.createHoodieClient(jsc, cfg.basePath, "", cfg.parallelism,
-        Option.of(cfg.strategyClassName), props);
+    // Get schema.
+    HoodieWriteClient client =
+        UtilHelpers.createHoodieClient(jsc, cfg.basePath, "", cfg.parallelism, Option.of(cfg.strategyClassName), props);
     client.scheduleCompactionAtInstant(cfg.compactionInstantTime, Option.empty());
     return 0;
   }

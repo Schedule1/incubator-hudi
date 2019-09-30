@@ -21,7 +21,7 @@
   <parent>
     <artifactId>hudi</artifactId>
     <groupId>org.apache.hudi</groupId>
-    <version>0.5.1-SNAPSHOT</version>
+    <version>0.5.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <artifactId>hudi-integ-test</artifactId>
@@ -54,7 +54,7 @@
     <!-- Hoodie -->
     <dependency>
       <groupId>org.apache.hudi</groupId>
-      <artifactId>hudi-spark</artifactId>
+      <artifactId>hudi-spark_${scala.binary.version}</artifactId>
       <version>${project.version}</version>
     </dependency>
 
@@ -83,7 +83,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hudi</groupId>
-      <artifactId>hudi-spark</artifactId>
+      <artifactId>hudi-spark_${scala.binary.version}</artifactId>
       <version>${project.version}</version>
       <classifier>tests</classifier>
       <type>test-jar</type>
@@ -131,18 +131,18 @@
 
   <properties>
     <dockerCompose.envFile>${project.basedir}/compose_env</dockerCompose.envFile>
-    <dockerCompose.file>${project.basedir}/../docker/compose/docker-compose_hadoop284_hive233_spark231.yml</dockerCompose.file>
+    <dockerCompose.file>${project.basedir}/../docker/compose/docker-compose_hadoop284_hive233_spark244.yml</dockerCompose.file>
     <skipITs>false</skipITs>
     <docker.compose.skip>${skipITs}</docker.compose.skip>
     <checkstyle.skip>true</checkstyle.skip>
-    <notice.dir>${project.basedir}/src/main/resources/META-INF</notice.dir>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
   <build>
     <plugins>
       <plugin>
-        <artifactId>exec-maven-plugin</artifactId>
         <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
         <version>1.6.0</version>
         <executions>
           <execution><!-- setup HUDI_WS variable in docker compose env file -->
@@ -201,7 +201,7 @@
             <configuration>
               <skip>${docker.compose.skip}</skip>
               <host>unix:///var/run/docker.sock</host>
-              <composeFile>${project.basedir}/../docker/compose/docker-compose_hadoop284_hive233_spark231.yml</composeFile>
+              <composeFile>${dockerCompose.file}</composeFile>
               <detachedMode>true</detachedMode>
               <envFile>${dockerCompose.envFile}</envFile>
             </configuration>
@@ -214,7 +214,7 @@
             </goals>
             <configuration>
               <skip>${docker.compose.skip}</skip>
-              <composeFile>${project.basedir}/../docker/compose/docker-compose_hadoop284_hive233_spark231.yml</composeFile>
+              <composeFile>${dockerCompose.file}</composeFile>
               <removeVolumes>true</removeVolumes>
             </configuration>
           </execution>

@@ -18,12 +18,6 @@
 
 package org.apache.hudi.common.table.log;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import org.apache.avro.Schema;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -33,25 +27,34 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.SpillableMapUtils;
 import org.apache.hudi.common.util.collection.ExternalSpillableMap;
 import org.apache.hudi.exception.HoodieIOException;
+
+import org.apache.avro.Schema;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Scans through all the blocks in a list of HoodieLogFile and builds up a compacted/merged list of records which will
  * be used as a lookup table when merging the base columnar file with the redo log file.
  *
- * NOTE:  If readBlockLazily is
- * turned on, does not merge, instead keeps reading log blocks and merges everything at once This is an optimization to
- * avoid seek() back and forth to read new block (forward seek()) and lazily read content of seen block (reverse and
- * forward seek()) during merge |            | Read Block 1 Metadata |            | Read Block 1 Data | | | Read Block 2
- * Metadata |            | Read Block 2 Data | | I/O Pass 1 | ..................... | I/O Pass 2 | ................. | |
- * | Read Block N Metadata | | Read Block N Data | <p> This results in two I/O passes over the log file.
+ * NOTE: If readBlockLazily is turned on, does not merge, instead keeps reading log blocks and merges everything at once
+ * This is an optimization to avoid seek() back and forth to read new block (forward seek()) and lazily read content of
+ * seen block (reverse and forward seek()) during merge | | Read Block 1 Metadata | | Read Block 1 Data | | | Read Block
+ * 2 Metadata | | Read Block 2 Data | | I/O Pass 1 | ..................... | I/O Pass 2 | ................. | | | Read
+ * Block N Metadata | | Read Block N Data |
+ * <p>
+ * This results in two I/O passes over the log file.
  */
 
 public class HoodieMergedLogRecordScanner extends AbstractHoodieLogRecordScanner
     implements Iterable<HoodieRecord<? extends HoodieRecordPayload>> {
 
-  private static final Logger log = LogManager.getLogger(HoodieMergedLogRecordScanner.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieMergedLogRecordScanner.class);
 
   // Final map of compacted/merged records
   private final ExternalSpillableMap<String, HoodieRecord<? extends HoodieRecordPayload>> records;
@@ -65,27 +68,25 @@ public class HoodieMergedLogRecordScanner extends AbstractHoodieLogRecordScanner
   public final HoodieTimer timer = new HoodieTimer();
 
   @SuppressWarnings("unchecked")
-  public HoodieMergedLogRecordScanner(FileSystem fs, String basePath, List<String> logFilePaths,
-      Schema readerSchema, String latestInstantTime, Long maxMemorySizeInBytes,
-      boolean readBlocksLazily, boolean reverseReader, int bufferSize, String spillableMapBasePath) {
+  public HoodieMergedLogRecordScanner(FileSystem fs, String basePath, List<String> logFilePaths, Schema readerSchema,
+      String latestInstantTime, Long maxMemorySizeInBytes, boolean readBlocksLazily, boolean reverseReader,
+      int bufferSize, String spillableMapBasePath) {
     super(fs, basePath, logFilePaths, readerSchema, latestInstantTime, readBlocksLazily, reverseReader, bufferSize);
     try {
       // Store merged records for all versions for this log file, set the in-memory footprint to maxInMemoryMapSize
-      this.records = new ExternalSpillableMap<>(maxMemorySizeInBytes, spillableMapBasePath,
-          new DefaultSizeEstimator(), new HoodieRecordSizeEstimator(readerSchema));
+      this.records = new ExternalSpillableMap<>(maxMemorySizeInBytes, spillableMapBasePath, new DefaultSizeEstimator(),
+          new HoodieRecordSizeEstimator(readerSchema));
       // Do the scan and merge
       timer.startTimer();
       scan();
       this.totalTimeTakenToReadAndMergeBlocks = timer.endTimer();
       this.numMergedRecordsInLog = records.size();
-      log.info("MaxMemoryInBytes allowed for compaction => " + maxMemorySizeInBytes);
-      log.info("Number of entries in MemoryBasedMap in ExternalSpillableMap => " + records
-          .getInMemoryMapNumEntries());
-      log.info("Total size in bytes of MemoryBasedMap in ExternalSpillableMap => " + records
-          .getCurrentInMemoryMapSize());
-      log.info("Number of entries in DiskBasedMap in ExternalSpillableMap => " + records
-          .getDiskBasedMapNumEntries());
-      log.info("Size of file spilled to disk => " + records.getSizeOfFileOnDiskInBytes());
+      LOG.info("MaxMemoryInBytes allowed for compaction => " + maxMemorySizeInBytes);
+      LOG.info("Number of entries in MemoryBasedMap in ExternalSpillableMap => " + records.getInMemoryMapNumEntries());
+      LOG.info(
+          "Total size in bytes of MemoryBasedMap in ExternalSpillableMap => " + records.getCurrentInMemoryMapSize());
+      LOG.info("Number of entries in DiskBasedMap in ExternalSpillableMap => " + records.getDiskBasedMapNumEntries());
+      LOG.info("Size of file spilled to disk => " + records.getSizeOfFileOnDiskInBytes());
     } catch (IOException e) {
       throw new HoodieIOException("IOException when reading log file ");
     }

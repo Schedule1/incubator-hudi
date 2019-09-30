@@ -18,8 +18,15 @@
 
 package org.apache.hudi.common.util;
 
+import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
+import org.apache.hudi.common.util.collection.Pair;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,18 +36,22 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
-import org.apache.hudi.common.util.collection.Pair;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Test;
 
+/**
+ * Tests RocksDB manager {@link RocksDBDAO}.
+ */
 public class TestRocksDBManager {
 
   private static RocksDBDAO dbManager;
 
+  @BeforeClass
+  public static void setUpClass() {
+    dbManager = new RocksDBDAO("/dummy/path",
+        FileSystemViewStorageConfig.newBuilder().build().newBuilder().build().getRocksdbBasePath());
+  }
+
   @AfterClass
-  public static void drop() throws IOException {
+  public static void tearDownClass() {
     if (dbManager != null) {
       dbManager.close();
       dbManager = null;
@@ -48,7 +59,7 @@ public class TestRocksDBManager {
   }
 
   @Test
-  public void testRocksDBManager() throws Exception {
+  public void testRocksDBManager() {
     String prefix1 = "prefix1_";
     String prefix2 = "prefix2_";
     String prefix3 = "prefix3_";
@@ -66,13 +77,11 @@ public class TestRocksDBManager {
       return new Payload(prefix, key, val, family);
     }).collect(Collectors.toList());
 
-    dbManager = new RocksDBDAO("/dummy/path",
-        FileSystemViewStorageConfig.newBuilder().build().newBuilder().build().getRocksdbBasePath());
-    colFamilies.stream().forEach(family -> dbManager.dropColumnFamily(family));
-    colFamilies.stream().forEach(family -> dbManager.addColumnFamily(family));
+    colFamilies.forEach(family -> dbManager.dropColumnFamily(family));
+    colFamilies.forEach(family -> dbManager.addColumnFamily(family));
 
     Map<String, Map<String, Integer>> countsMap = new HashMap<>();
-    payloads.stream().forEach(payload -> {
+    payloads.forEach(payload -> {
       dbManager.put(payload.getFamily(), payload.getKey(), payload);
 
       if (!countsMap.containsKey(payload.family)) {
@@ -86,21 +95,21 @@ public class TestRocksDBManager {
       c.put(payload.prefix, currCount + 1);
     });
 
-    colFamilies.stream().forEach(family -> {
-      prefixes.stream().forEach(prefix -> {
+    colFamilies.forEach(family -> {
+      prefixes.forEach(prefix -> {
         List<Pair<String, Payload>> gotPayloads =
             dbManager.<Payload>prefixSearch(family, prefix).collect(Collectors.toList());
         Integer expCount = countsMap.get(family).get(prefix);
         Assert.assertEquals("Size check for prefix (" + prefix + ") and family (" + family + ")",
             expCount == null ? 0L : expCount.longValue(), gotPayloads.size());
-        gotPayloads.stream().forEach(p -> {
+        gotPayloads.forEach(p -> {
           Assert.assertEquals(p.getRight().getFamily(), family);
           Assert.assertTrue(p.getRight().getKey().startsWith(prefix));
         });
       });
     });
 
-    payloads.stream().forEach(payload -> {
+    payloads.forEach(payload -> {
       Payload p = dbManager.get(payload.getFamily(), payload.getKey());
       Assert.assertEquals("Retrieved correct payload for key :" + payload.getKey(), payload, p);
 
@@ -113,12 +122,12 @@ public class TestRocksDBManager {
     });
 
     // Now do a prefix search
-    colFamilies.stream().forEach(family -> {
-      prefixes.stream().forEach(prefix -> {
+    colFamilies.forEach(family -> {
+      prefixes.forEach(prefix -> {
         List<Pair<String, Payload>> gotPayloads =
             dbManager.<Payload>prefixSearch(family, prefix).collect(Collectors.toList());
-        Assert.assertEquals("Size check for prefix (" + prefix + ") and family (" + family + ")",
-            0, gotPayloads.size());
+        Assert.assertEquals("Size check for prefix (" + prefix + ") and family (" + family + ")", 0,
+            gotPayloads.size());
       });
     });
 
@@ -127,6 +136,9 @@ public class TestRocksDBManager {
     Assert.assertFalse(new File(rocksDBBasePath).exists());
   }
 
+  /**
+   * A payload definition for {@link TestRocksDBManager}.
+   */
   public static class Payload implements Serializable {
 
     private final String prefix;
@@ -166,10 +178,8 @@ public class TestRocksDBManager {
         return false;
       }
       Payload payload = (Payload) o;
-      return Objects.equals(prefix, payload.prefix)
-          && Objects.equals(key, payload.key)
-          && Objects.equals(val, payload.val)
-          && Objects.equals(family, payload.family);
+      return Objects.equals(prefix, payload.prefix) && Objects.equals(key, payload.key)
+          && Objects.equals(val, payload.val) && Objects.equals(family, payload.family);
     }
 
     @Override

@@ -18,18 +18,20 @@
 
 package org.apache.hudi.hadoop.realtime;
 
-import java.io.IOException;
+import org.apache.hudi.exception.HoodieException;
+
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hudi.exception.HoodieException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
+
 /**
- * Realtime Record Reader which can do compacted (merge-on-read) record reading or
- * unmerged reading (parquet and log files read in parallel) based on job configuration.
+ * Realtime Record Reader which can do compacted (merge-on-read) record reading or unmerged reading (parquet and log
+ * files read in parallel) based on job configuration.
  */
 public class HoodieRealtimeRecordReader implements RecordReader<NullWritable, ArrayWritable> {
 
@@ -37,7 +39,7 @@ public class HoodieRealtimeRecordReader implements RecordReader<NullWritable, Ar
   public static final String REALTIME_SKIP_MERGE_PROP = "hoodie.realtime.merge.skip";
   // By default, we do merged-reading
   public static final String DEFAULT_REALTIME_SKIP_MERGE = "false";
-  private static final transient Logger LOG = LogManager.getLogger(HoodieRealtimeRecordReader.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieRealtimeRecordReader.class);
   private final RecordReader<NullWritable, ArrayWritable> reader;
 
   public HoodieRealtimeRecordReader(HoodieRealtimeFileSplit split, JobConf job,
@@ -46,14 +48,14 @@ public class HoodieRealtimeRecordReader implements RecordReader<NullWritable, Ar
   }
 
   public static boolean canSkipMerging(JobConf jobConf) {
-    return Boolean.valueOf(jobConf.get(REALTIME_SKIP_MERGE_PROP, DEFAULT_REALTIME_SKIP_MERGE));
+    return Boolean.parseBoolean(jobConf.get(REALTIME_SKIP_MERGE_PROP, DEFAULT_REALTIME_SKIP_MERGE));
   }
 
   /**
-   * Construct record reader based on job configuration
+   * Construct record reader based on job configuration.
    *
-   * @param split      File Split
-   * @param jobConf    Job Configuration
+   * @param split File Split
+   * @param jobConf Job Configuration
    * @param realReader Parquet Record Reader
    * @return Realtime Reader
    */

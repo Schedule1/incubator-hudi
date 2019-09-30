@@ -18,38 +18,38 @@
 
 package org.apache.hudi.io.compact.strategy;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.hudi.avro.model.HoodieCompactionOperation;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
-import org.apache.hudi.common.model.HoodieDataFile;
+import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieLogFile;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /**
- * LogFileSizeBasedCompactionStrategy orders the compactions based on the total log files size and
- * limits the compactions within a configured IO bound
+ * LogFileSizeBasedCompactionStrategy orders the compactions based on the total log files size and limits the
+ * compactions within a configured IO bound.
  *
  * @see BoundedIOCompactionStrategy
  * @see CompactionStrategy
  */
-public class LogFileSizeBasedCompactionStrategy extends BoundedIOCompactionStrategy implements
-    Comparator<HoodieCompactionOperation> {
+public class LogFileSizeBasedCompactionStrategy extends BoundedIOCompactionStrategy
+    implements Comparator<HoodieCompactionOperation> {
 
   private static final String TOTAL_LOG_FILE_SIZE = "TOTAL_LOG_FILE_SIZE";
 
   @Override
-  public Map<String, Double> captureMetrics(HoodieWriteConfig config, Option<HoodieDataFile> dataFile,
+  public Map<String, Double> captureMetrics(HoodieWriteConfig config, Option<HoodieBaseFile> dataFile,
       String partitionPath, List<HoodieLogFile> logFiles) {
     Map<String, Double> metrics = super.captureMetrics(config, dataFile, partitionPath, logFiles);
 
     // Total size of all the log files
-    Long totalLogFileSize = logFiles.stream().map(HoodieLogFile::getFileSize)
-        .filter(size -> size >= 0).reduce((size1, size2) -> size1 + size2)
-        .orElse(0L);
+    Long totalLogFileSize = logFiles.stream().map(HoodieLogFile::getFileSize).filter(size -> size >= 0)
+        .reduce(Long::sum).orElse(0L);
     // save the metrics needed during the order
     metrics.put(TOTAL_LOG_FILE_SIZE, totalLogFileSize.doubleValue());
     return metrics;
@@ -59,9 +59,8 @@ public class LogFileSizeBasedCompactionStrategy extends BoundedIOCompactionStrat
   public List<HoodieCompactionOperation> orderAndFilter(HoodieWriteConfig writeConfig,
       List<HoodieCompactionOperation> operations, List<HoodieCompactionPlan> pendingCompactionPlans) {
     // Order the operations based on the reverse size of the logs and limit them by the IO
-    return super
-        .orderAndFilter(writeConfig,
-            operations.stream().sorted(this).collect(Collectors.toList()), pendingCompactionPlans);
+    return super.orderAndFilter(writeConfig, operations.stream().sorted(this).collect(Collectors.toList()),
+        pendingCompactionPlans);
   }
 
   @Override

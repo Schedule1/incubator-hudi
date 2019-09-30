@@ -18,17 +18,17 @@
 
 package org.apache.hudi.hive;
 
-import com.google.common.base.Objects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import java.util.List;
-import java.util.Map;
 import org.apache.parquet.schema.MessageType;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
+
 /**
- * Represents the schema difference between the storage schema and hive table schema
+ * Represents the schema difference between the storage schema and hive table schema.
  */
 public class SchemaDifference {
 
@@ -38,14 +38,13 @@ public class SchemaDifference {
   private final Map<String, String> updateColumnTypes;
   private final Map<String, String> addColumnTypes;
 
-  private SchemaDifference(MessageType storageSchema, Map<String, String> tableSchema,
-      List<String> deleteColumns, Map<String, String> updateColumnTypes,
-      Map<String, String> addColumnTypes) {
+  private SchemaDifference(MessageType storageSchema, Map<String, String> tableSchema, List<String> deleteColumns,
+      Map<String, String> updateColumnTypes, Map<String, String> addColumnTypes) {
     this.storageSchema = storageSchema;
     this.tableSchema = tableSchema;
-    this.deleteColumns = ImmutableList.copyOf(deleteColumns);
-    this.updateColumnTypes = ImmutableMap.copyOf(updateColumnTypes);
-    this.addColumnTypes = ImmutableMap.copyOf(addColumnTypes);
+    this.deleteColumns = Collections.unmodifiableList(deleteColumns);
+    this.updateColumnTypes = Collections.unmodifiableMap(updateColumnTypes);
+    this.addColumnTypes =  Collections.unmodifiableMap(addColumnTypes);
   }
 
   public List<String> getDeleteColumns() {
@@ -60,19 +59,23 @@ public class SchemaDifference {
     return addColumnTypes;
   }
 
-  @Override
-  public String toString() {
-    return Objects.toStringHelper(this).add("deleteColumns", deleteColumns)
-        .add("updateColumnTypes", updateColumnTypes).add("addColumnTypes", addColumnTypes)
-        .toString();
-  }
-
   public static Builder newBuilder(MessageType storageSchema, Map<String, String> tableSchema) {
     return new Builder(storageSchema, tableSchema);
   }
 
   public boolean isEmpty() {
     return deleteColumns.isEmpty() && updateColumnTypes.isEmpty() && addColumnTypes.isEmpty();
+  }
+
+  @Override
+  public String toString() {
+    return new StringJoiner(", ", SchemaDifference.class.getSimpleName() + "[", "]")
+           .add("storageSchema=" + storageSchema)
+           .add("tableSchema=" + tableSchema)
+           .add("deleteColumns=" + deleteColumns)
+           .add("updateColumnTypes=" + updateColumnTypes)
+           .add("addColumnTypes=" + addColumnTypes)
+           .toString();
   }
 
   public static class Builder {
@@ -86,9 +89,9 @@ public class SchemaDifference {
     public Builder(MessageType storageSchema, Map<String, String> tableSchema) {
       this.storageSchema = storageSchema;
       this.tableSchema = tableSchema;
-      deleteColumns = Lists.newArrayList();
-      updateColumnTypes = Maps.newHashMap();
-      addColumnTypes = Maps.newHashMap();
+      deleteColumns = new ArrayList<>();
+      updateColumnTypes = new HashMap<>();
+      addColumnTypes = new HashMap<>();
     }
 
     public Builder deleteTableColumn(String column) {
@@ -107,8 +110,7 @@ public class SchemaDifference {
     }
 
     public SchemaDifference build() {
-      return new SchemaDifference(storageSchema, tableSchema, deleteColumns, updateColumnTypes,
-          addColumnTypes);
+      return new SchemaDifference(storageSchema, tableSchema, deleteColumns, updateColumnTypes, addColumnTypes);
     }
   }
 }

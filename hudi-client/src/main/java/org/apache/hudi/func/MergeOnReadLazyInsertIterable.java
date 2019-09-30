@@ -18,9 +18,6 @@
 
 package org.apache.hudi.func;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -28,12 +25,14 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.io.HoodieAppendHandle;
 import org.apache.hudi.table.HoodieTable;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 /**
- * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new
- * log files.
+ * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new log files.
  */
-public class MergeOnReadLazyInsertIterable<T extends HoodieRecordPayload> extends
-    CopyOnWriteLazyInsertIterable<T> {
+public class MergeOnReadLazyInsertIterable<T extends HoodieRecordPayload> extends CopyOnWriteLazyInsertIterable<T> {
 
   public MergeOnReadLazyInsertIterable(Iterator<HoodieRecord<T>> sortedRecordItr, HoodieWriteConfig config,
       String commitTime, HoodieTable<T> hoodieTable, String idPfx) {

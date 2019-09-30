@@ -18,42 +18,62 @@
 
 package org.apache.hudi.common.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.hudi.avro.HoodieAvroWriteSupport;
+import org.apache.hudi.common.HoodieCommonTestHarness;
+import org.apache.hudi.common.bloom.filter.BloomFilter;
+import org.apache.hudi.common.bloom.filter.BloomFilterFactory;
+import org.apache.hudi.common.bloom.filter.BloomFilterTypeCode;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieTestUtils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
-import org.apache.hudi.avro.HoodieAvroWriteSupport;
-import org.apache.hudi.common.BloomFilter;
-import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.common.model.HoodieTestUtils;
 import org.apache.parquet.avro.AvroSchemaConverter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-public class TestParquetUtils {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-  private String basePath;
+/**
+ * Tests parquet utils.
+ */
+@RunWith(Parameterized.class)
+public class TestParquetUtils extends HoodieCommonTestHarness {
+
+  String bloomFilterTypeToTest;
+
+  @Parameters()
+  public static Collection<Object[]> data() {
+    return Arrays.asList(new Object[][] {
+        {BloomFilterTypeCode.SIMPLE.name()},
+        {BloomFilterTypeCode.DYNAMIC_V0.name()}
+    });
+  }
+
+  public TestParquetUtils(String bloomFilterTypeToTest) {
+    this.bloomFilterTypeToTest = bloomFilterTypeToTest;
+  }
 
   @Before
-  public void setup() throws IOException {
-    // Create a temp folder as the base path
-    TemporaryFolder folder = new TemporaryFolder();
-    folder.create();
-    basePath = folder.getRoot().getAbsolutePath();
+  public void setup() {
+    initPath();
   }
 
   @Test
@@ -73,8 +93,8 @@ public class TestParquetUtils {
     Collections.sort(rowKeys);
 
     assertEquals("Did not read back the expected list of keys", rowKeys, rowKeysInFile);
-    BloomFilter filterInFile = ParquetUtils.readBloomFilterFromParquetMetadata(HoodieTestUtils.getDefaultHadoopConf(),
-        new Path(filePath));
+    BloomFilter filterInFile =
+        ParquetUtils.readBloomFilterFromParquetMetadata(HoodieTestUtils.getDefaultHadoopConf(), new Path(filePath));
     for (String rowKey : rowKeys) {
       assertTrue("key should be found in bloom filter", filterInFile.mightContain(rowKey));
     }
@@ -96,9 +116,8 @@ public class TestParquetUtils {
     writeParquetFile(filePath, rowKeys);
 
     // Read and verify
-    Set<String> filtered = ParquetUtils.filterParquetRowKeys(HoodieTestUtils.getDefaultHadoopConf(),
-        new Path(filePath),
-        filter);
+    Set<String> filtered =
+        ParquetUtils.filterParquetRowKeys(HoodieTestUtils.getDefaultHadoopConf(), new Path(filePath), filter);
 
     assertEquals("Filtered count does not match", filter.size(), filtered.size());
 
@@ -107,13 +126,13 @@ public class TestParquetUtils {
     }
   }
 
-  private void writeParquetFile(String filePath,
-      List<String> rowKeys) throws Exception {
+  private void writeParquetFile(String filePath, List<String> rowKeys) throws Exception {
     // Write out a parquet file
     Schema schema = HoodieAvroUtils.getRecordKeySchema();
-    BloomFilter filter = new BloomFilter(1000, 0.0001);
-    HoodieAvroWriteSupport writeSupport = new HoodieAvroWriteSupport(new AvroSchemaConverter().convert(schema), schema,
-        filter);
+    BloomFilter filter = BloomFilterFactory
+        .createBloomFilter(1000, 0.0001, 10000, bloomFilterTypeToTest);
+    HoodieAvroWriteSupport writeSupport =
+        new HoodieAvroWriteSupport(new AvroSchemaConverter().convert(schema), schema, filter);
     ParquetWriter writer = new ParquetWriter(new Path(filePath), writeSupport, CompressionCodecName.GZIP,
         120 * 1024 * 1024, ParquetWriter.DEFAULT_PAGE_SIZE);
     for (String rowKey : rowKeys) {

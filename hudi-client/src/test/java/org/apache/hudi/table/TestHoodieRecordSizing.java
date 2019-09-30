@@ -18,12 +18,13 @@
 
 package org.apache.hudi.table;
 
-import static org.apache.hudi.common.model.HoodieTestUtils.generateFakeHoodieWriteStat;
-import static org.apache.hudi.table.HoodieCopyOnWriteTable.averageBytesPerRecord;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.apache.hudi.common.model.HoodieCommitMetadata;
+import org.apache.hudi.common.model.HoodieWriteStat;
+import org.apache.hudi.common.table.HoodieTimeline;
+import org.apache.hudi.common.table.timeline.HoodieInstant;
+import org.apache.hudi.common.util.Option;
+
+import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,12 +32,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.hudi.common.model.HoodieCommitMetadata;
-import org.apache.hudi.common.model.HoodieWriteStat;
-import org.apache.hudi.common.table.HoodieTimeline;
-import org.apache.hudi.common.table.timeline.HoodieInstant;
-import org.apache.hudi.common.util.Option;
-import org.junit.Test;
+
+import static org.apache.hudi.common.model.HoodieTestUtils.generateFakeHoodieWriteStat;
+import static org.apache.hudi.table.HoodieCopyOnWriteTable.averageBytesPerRecord;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TestHoodieRecordSizing {
 
@@ -79,20 +81,15 @@ public class TestHoodieRecordSizing {
   private static LinkedList<Option<byte[]>> generateCommitMetadataList() throws IOException {
     LinkedList<Option<byte[]>> commits = new LinkedList<>();
     // First commit with non zero records and bytes
-    commits.push(Option.of(generateCommitMetadataWith(2000, 10000).toJsonString()
-        .getBytes(StandardCharsets.UTF_8)));
+    commits.push(Option.of(generateCommitMetadataWith(2000, 10000).toJsonString().getBytes(StandardCharsets.UTF_8)));
     // Second commit with non zero records and bytes
-    commits.push(Option.of(generateCommitMetadataWith(1500, 7500).toJsonString()
-        .getBytes(StandardCharsets.UTF_8)));
+    commits.push(Option.of(generateCommitMetadataWith(1500, 7500).toJsonString().getBytes(StandardCharsets.UTF_8)));
     // Third commit with both zero records and zero bytes
-    commits.push(Option.of(generateCommitMetadataWith(0, 0).toJsonString()
-        .getBytes(StandardCharsets.UTF_8)));
+    commits.push(Option.of(generateCommitMetadataWith(0, 0).toJsonString().getBytes(StandardCharsets.UTF_8)));
     // Fourth commit with zero records
-    commits.push(Option.of(generateCommitMetadataWith(0, 1500).toJsonString()
-        .getBytes(StandardCharsets.UTF_8)));
+    commits.push(Option.of(generateCommitMetadataWith(0, 1500).toJsonString().getBytes(StandardCharsets.UTF_8)));
     // Fifth commit with zero bytes
-    commits.push(Option.of(generateCommitMetadataWith(2500, 0).toJsonString()
-        .getBytes(StandardCharsets.UTF_8)));
+    commits.push(Option.of(generateCommitMetadataWith(2500, 0).toJsonString().getBytes(StandardCharsets.UTF_8)));
     return commits;
   }
 

@@ -18,8 +18,8 @@
 
 package org.apache.hudi.utilities.transform;
 
-import java.util.UUID;
 import org.apache.hudi.common.util.TypedProperties;
+
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -29,28 +29,28 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
+import java.util.UUID;
+
 /**
  * Transformer that can flatten nested objects. It currently doesn't unnest arrays.
  */
 public class FlatteningTransformer implements Transformer {
 
   private static final String TMP_TABLE = "HUDI_SRC_TMP_TABLE_";
-  private static volatile Logger log = LogManager.getLogger(SqlQueryBasedTransformer.class);
+  private static final Logger LOG = LogManager.getLogger(SqlQueryBasedTransformer.class);
 
-  /** Configs supported */
+  /**
+   * Configs supported.
+   */
   @Override
-  public Dataset<Row> apply(
-      JavaSparkContext jsc,
-      SparkSession sparkSession,
-      Dataset<Row> rowDataset,
+  public Dataset<Row> apply(JavaSparkContext jsc, SparkSession sparkSession, Dataset<Row> rowDataset,
       TypedProperties properties) {
 
     // tmp table name doesn't like dashes
     String tmpTable = TMP_TABLE.concat(UUID.randomUUID().toString().replace("-", "_"));
-    log.info("Registering tmp table : " + tmpTable);
+    LOG.info("Registering tmp table : " + tmpTable);
     rowDataset.registerTempTable(tmpTable);
-    return sparkSession.sql("select " + flattenSchema(rowDataset.schema(), null)
-        + " from " + tmpTable);
+    return sparkSession.sql("select " + flattenSchema(rowDataset.schema(), null) + " from " + tmpTable);
   }
 
   public String flattenSchema(StructType schema, String prefix) {
@@ -75,7 +75,7 @@ public class FlatteningTransformer implements Transformer {
     }
 
     if (selectSQLQuery.length() > 0) {
-      selectSQLQuery. deleteCharAt(selectSQLQuery.length() - 1);
+      selectSQLQuery.deleteCharAt(selectSQLQuery.length() - 1);
     }
 
     return selectSQLQuery.toString();

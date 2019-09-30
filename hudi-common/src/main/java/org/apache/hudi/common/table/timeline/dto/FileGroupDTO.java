@@ -18,13 +18,18 @@
 
 package org.apache.hudi.common.table.timeline.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.hudi.common.model.HoodieFileGroup;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * The data transfer object of file group.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FileGroupDTO {
 
@@ -50,8 +55,8 @@ public class FileGroupDTO {
   }
 
   public static HoodieFileGroup toFileGroup(FileGroupDTO dto, HoodieTableMetaClient metaClient) {
-    HoodieFileGroup fileGroup = new HoodieFileGroup(dto.partition, dto.id,
-        TimelineDTO.toTimeline(dto.timeline, metaClient));
+    HoodieFileGroup fileGroup =
+        new HoodieFileGroup(dto.partition, dto.id, TimelineDTO.toTimeline(dto.timeline, metaClient));
     dto.slices.stream().map(FileSliceDTO::toFileSlice).forEach(fileSlice -> fileGroup.addFileSlice(fileSlice));
     return fileGroup;
   }

@@ -18,17 +18,22 @@
 
 package org.apache.hudi.common.table.log;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.avro.Schema;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.model.HoodieLogFile;
 import org.apache.hudi.common.table.log.block.HoodieLogBlock;
 import org.apache.hudi.exception.HoodieIOException;
+
+import org.apache.avro.Schema;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Hoodie log format reader.
+ */
 public class HoodieLogFormatReader implements HoodieLogFormat.Reader {
 
   private final List<HoodieLogFile> logFiles;
@@ -41,10 +46,10 @@ public class HoodieLogFormatReader implements HoodieLogFormat.Reader {
   private final boolean reverseLogReader;
   private int bufferSize;
 
-  private static final Logger log = LogManager.getLogger(HoodieLogFormatReader.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieLogFormatReader.class);
 
-  HoodieLogFormatReader(FileSystem fs, List<HoodieLogFile> logFiles,
-      Schema readerSchema, boolean readBlocksLazily, boolean reverseLogReader, int bufferSize) throws IOException {
+  HoodieLogFormatReader(FileSystem fs, List<HoodieLogFile> logFiles, Schema readerSchema, boolean readBlocksLazily,
+      boolean reverseLogReader, int bufferSize) throws IOException {
     this.logFiles = logFiles;
     this.fs = fs;
     this.readerSchema = readerSchema;
@@ -60,10 +65,9 @@ public class HoodieLogFormatReader implements HoodieLogFormat.Reader {
 
   @Override
   /**
-   * Note : In lazy mode, clients must ensure close() should be called only after processing
-   * all log-blocks as the underlying inputstream will be closed.
-   * TODO: We can introduce invalidate() API at HoodieLogBlock and this object can call invalidate on
-   * all returned log-blocks so that we check this scenario specifically in HoodieLogBlock
+   * Note : In lazy mode, clients must ensure close() should be called only after processing all log-blocks as the
+   * underlying inputstream will be closed. TODO: We can introduce invalidate() API at HoodieLogBlock and this object
+   * can call invalidate on all returned log-blocks so that we check this scenario specifically in HoodieLogBlock
    */
   public void close() throws IOException {
 
@@ -94,12 +98,12 @@ public class HoodieLogFormatReader implements HoodieLogFormat.Reader {
         } else {
           this.prevReadersInOpenState.add(currentReader);
         }
-        this.currentReader = new HoodieLogFileReader(fs, nextLogFile, readerSchema, bufferSize, readBlocksLazily,
-            false);
+        this.currentReader =
+            new HoodieLogFileReader(fs, nextLogFile, readerSchema, bufferSize, readBlocksLazily, false);
       } catch (IOException io) {
         throw new HoodieIOException("unable to initialize read with log file ", io);
       }
-      log.info("Moving to the next reader for logfile " + currentReader.getLogFile());
+      LOG.info("Moving to the next reader for logfile " + currentReader.getLogFile());
       return this.currentReader.hasNext();
     }
     return false;
@@ -116,8 +120,7 @@ public class HoodieLogFormatReader implements HoodieLogFormat.Reader {
   }
 
   @Override
-  public void remove() {
-  }
+  public void remove() {}
 
   @Override
   public boolean hasPrev() {

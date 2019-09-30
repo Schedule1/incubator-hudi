@@ -18,36 +18,37 @@
 
 package org.apache.hudi.common.model;
 
+import org.apache.hudi.common.util.Option;
+
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.TreeSet;
 import java.util.stream.Stream;
-import org.apache.hudi.common.util.Option;
 
 /**
- * Within a file group, a slice is a combination of data file written at a commit time and list of
- * log files, containing changes to the data file from that commit time
+ * Within a file group, a slice is a combination of data file written at a commit time and list of log files, containing
+ * changes to the data file from that commit time.
  */
 public class FileSlice implements Serializable {
 
   /**
-   * File Group Id of the Slice
+   * File Group Id of the Slice.
    */
   private HoodieFileGroupId fileGroupId;
 
   /**
-   * Point in the timeline, at which the slice was created
+   * Point in the timeline, at which the slice was created.
    */
   private String baseInstantTime;
 
   /**
-   * data file, with the compacted data, for this slice
+   * data file, with the compacted data, for this slice.
    */
-  private HoodieDataFile dataFile;
+  private HoodieBaseFile baseFile;
 
   /**
-   * List of appendable log files with real time data - Sorted with greater log version first -
-   * Always empty for copy_on_write storage.
+   * List of appendable log files with real time data - Sorted with greater log version first - Always empty for
+   * copy_on_write storage.
    */
   private final TreeSet<HoodieLogFile> logFiles;
 
@@ -58,12 +59,12 @@ public class FileSlice implements Serializable {
   public FileSlice(HoodieFileGroupId fileGroupId, String baseInstantTime) {
     this.fileGroupId = fileGroupId;
     this.baseInstantTime = baseInstantTime;
-    this.dataFile = null;
+    this.baseFile = null;
     this.logFiles = new TreeSet<>(HoodieLogFile.getReverseLogFileComparator());
   }
 
-  public void setDataFile(HoodieDataFile dataFile) {
-    this.dataFile = dataFile;
+  public void setBaseFile(HoodieBaseFile baseFile) {
+    this.baseFile = baseFile;
   }
 
   public void addLogFile(HoodieLogFile logFile) {
@@ -90,8 +91,8 @@ public class FileSlice implements Serializable {
     return fileGroupId;
   }
 
-  public Option<HoodieDataFile> getDataFile() {
-    return Option.ofNullable(dataFile);
+  public Option<HoodieBaseFile> getBaseFile() {
+    return Option.ofNullable(baseFile);
   }
 
   public Option<HoodieLogFile> getLatestLogFile() {
@@ -100,10 +101,11 @@ public class FileSlice implements Serializable {
 
   /**
    * Returns true if there is no data file and no log files. Happens as part of pending compaction
+   * 
    * @return
    */
   public boolean isEmpty() {
-    return (dataFile == null) && (logFiles.isEmpty());
+    return (baseFile == null) && (logFiles.isEmpty());
   }
 
   @Override
@@ -111,7 +113,7 @@ public class FileSlice implements Serializable {
     final StringBuilder sb = new StringBuilder("FileSlice {");
     sb.append("fileGroupId=").append(fileGroupId);
     sb.append(", baseCommitTime=").append(baseInstantTime);
-    sb.append(", dataFile='").append(dataFile).append('\'');
+    sb.append(", baseFile='").append(baseFile).append('\'');
     sb.append(", logFiles='").append(logFiles).append('\'');
     sb.append('}');
     return sb.toString();
@@ -126,10 +128,8 @@ public class FileSlice implements Serializable {
       return false;
     }
     FileSlice slice = (FileSlice) o;
-    return Objects.equals(fileGroupId, slice.fileGroupId)
-        && Objects.equals(baseInstantTime, slice.baseInstantTime)
-        && Objects.equals(dataFile, slice.dataFile)
-        && Objects.equals(logFiles, slice.logFiles);
+    return Objects.equals(fileGroupId, slice.fileGroupId) && Objects.equals(baseInstantTime, slice.baseInstantTime)
+        && Objects.equals(baseFile, slice.baseFile) && Objects.equals(logFiles, slice.logFiles);
   }
 
   @Override

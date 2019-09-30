@@ -18,23 +18,25 @@
 
 package org.apache.hudi.common.model;
 
-import java.io.IOException;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.common.util.HoodieAvroUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieIOException;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
+
+import java.io.IOException;
+
 /**
- * This is a payload to wrap a existing Hoodie Avro Record. Useful to create a HoodieRecord over
- * existing GenericRecords in a hoodie datasets (useful in compactions)
+ * This is a payload to wrap a existing Hoodie Avro Record. Useful to create a HoodieRecord over existing GenericRecords
+ * in a hoodie tables (useful in compactions)
  */
 public class HoodieAvroPayload implements HoodieRecordPayload<HoodieAvroPayload> {
 
   // Store the GenericRecord converted to bytes - 1) Doesn't store schema hence memory efficient 2) Makes the payload
   // java serializable
-  private final byte [] recordBytes;
+  private final byte[] recordBytes;
 
   public HoodieAvroPayload(Option<GenericRecord> record) {
     try {
@@ -54,8 +56,7 @@ public class HoodieAvroPayload implements HoodieRecordPayload<HoodieAvroPayload>
   }
 
   @Override
-  public Option<IndexedRecord> combineAndGetUpdateValue(IndexedRecord currentValue, Schema schema)
-      throws IOException {
+  public Option<IndexedRecord> combineAndGetUpdateValue(IndexedRecord currentValue, Schema schema) throws IOException {
     return getInsertValue(schema);
   }
 

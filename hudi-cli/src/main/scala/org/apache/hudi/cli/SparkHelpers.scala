@@ -22,13 +22,13 @@ import org.apache.avro.generic.IndexedRecord
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hudi.avro.HoodieAvroWriteSupport
+import org.apache.hudi.common.HoodieJsonPayload
+import org.apache.hudi.common.bloom.filter.{BloomFilter, BloomFilterFactory}
 import org.apache.hudi.common.model.HoodieRecord
 import org.apache.hudi.common.util.ParquetUtils
-import org.apache.hudi.common.{BloomFilter, HoodieJsonPayload}
 import org.apache.hudi.config.{HoodieIndexConfig, HoodieStorageConfig}
 import org.apache.hudi.io.storage.{HoodieParquetConfig, HoodieParquetWriter}
 import org.apache.parquet.avro.AvroSchemaConverter
-import org.apache.parquet.hadoop.ParquetFileReader
 import org.apache.parquet.hadoop.metadata.CompressionCodecName
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
@@ -41,7 +41,8 @@ object SparkHelpers {
   def skipKeysAndWriteNewFile(commitTime: String, fs: FileSystem, sourceFile: Path, destinationFile: Path, keysToSkip: Set[String]) {
     val sourceRecords = ParquetUtils.readAvroRecords(fs.getConf, sourceFile)
     val schema: Schema = sourceRecords.get(0).getSchema
-    val filter: BloomFilter = new BloomFilter(HoodieIndexConfig.DEFAULT_BLOOM_FILTER_NUM_ENTRIES.toInt, HoodieIndexConfig.DEFAULT_BLOOM_FILTER_FPP.toDouble)
+    val filter: BloomFilter = BloomFilterFactory.createBloomFilter(HoodieIndexConfig.DEFAULT_BLOOM_FILTER_NUM_ENTRIES.toInt, HoodieIndexConfig.DEFAULT_BLOOM_FILTER_FPP.toDouble,
+      HoodieIndexConfig.DEFAULT_HOODIE_BLOOM_INDEX_FILTER_DYNAMIC_MAX_ENTRIES.toInt, HoodieIndexConfig.DEFAULT_BLOOM_INDEX_FILTER_TYPE);
     val writeSupport: HoodieAvroWriteSupport = new HoodieAvroWriteSupport(new AvroSchemaConverter().convert(schema), schema, filter)
     val parquetConfig: HoodieParquetConfig = new HoodieParquetConfig(writeSupport, CompressionCodecName.GZIP, HoodieStorageConfig.DEFAULT_PARQUET_BLOCK_SIZE_BYTES.toInt, HoodieStorageConfig.DEFAULT_PARQUET_PAGE_SIZE_BYTES.toInt, HoodieStorageConfig.DEFAULT_PARQUET_FILE_MAX_BYTES.toInt, fs.getConf, HoodieStorageConfig.DEFAULT_STREAM_COMPRESSION_RATIO.toDouble)
     val writer = new HoodieParquetWriter[HoodieJsonPayload, IndexedRecord](commitTime, destinationFile, parquetConfig, schema)
@@ -53,11 +54,6 @@ object SparkHelpers {
       }
     }
     writer.close
-  }
-
-  def getBloomFilter(file: String, conf: Configuration): String = {
-    val footer = ParquetFileReader.readFooter(conf, new Path(file));
-    return footer.getFileMetaData().getKeyValueMetaData().get(HoodieAvroWriteSupport.HOODIE_AVRO_BLOOM_FILTER_METADATA_KEY)
   }
 }
 
@@ -124,8 +120,7 @@ class SparkHelper(sqlContext: SQLContext, fs: FileSystem) {
     * @return
     */
   def fileKeysAgainstBF(conf: Configuration, sqlContext: SQLContext, file: String): Boolean = {
-    val bfStr = SparkHelpers.getBloomFilter(file, conf)
-    val bf = new BloomFilter(bfStr)
+    val bf = ParquetUtils.readBloomFilterFromParquetMetadata(conf, new Path(file))
     val foundCount = sqlContext.parquetFile(file)
       .select(s"`${HoodieRecord.RECORD_KEY_METADATA_FIELD}`")
       .collect().count(r => !bf.mightContain(r.getString(0)))

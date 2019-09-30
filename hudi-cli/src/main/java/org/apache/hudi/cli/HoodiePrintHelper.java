@@ -18,19 +18,22 @@
 
 package org.apache.hudi.cli;
 
+import org.apache.hudi.common.util.Option;
+
 import com.jakewharton.fliptables.FlipTable;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import org.apache.hudi.common.util.Option;
+
 
 /**
- * Helper class to render table for hoodie-cli
+ * Helper class to render table for hoodie-cli.
  */
 public class HoodiePrintHelper {
 
   /**
-   * Print header and raw rows
+   * Print header and raw rows.
    *
    * @param header Header
    * @param rows Raw Rows
@@ -41,7 +44,7 @@ public class HoodiePrintHelper {
   }
 
   /**
-   * Serialize Table to printable string
+   * Serialize Table to printable string.
    *
    * @param rowHeader Row Header
    * @param fieldNameToConverterMap Field Specific Converters
@@ -52,25 +55,26 @@ public class HoodiePrintHelper {
    * @param rows List of rows
    * @return Serialized form for printing
    */
-  public static String print(TableHeader rowHeader,
-      Map<String, Function<Object, String>> fieldNameToConverterMap,
-      String sortByField, boolean isDescending, Integer limit, boolean headerOnly,
-      List<Comparable[]> rows) {
+  public static String print(TableHeader rowHeader, Map<String, Function<Object, String>> fieldNameToConverterMap,
+      String sortByField, boolean isDescending, Integer limit, boolean headerOnly, List<Comparable[]> rows) {
 
     if (headerOnly) {
       return HoodiePrintHelper.print(rowHeader);
     }
 
-    Table table = new Table(rowHeader, fieldNameToConverterMap,
-        Option.ofNullable(sortByField.isEmpty() ? null : sortByField),
-        Option.ofNullable(isDescending),
-        Option.ofNullable(limit <= 0 ? null : limit)).addAllRows(rows).flip();
+    if (!sortByField.isEmpty() && !rowHeader.containsField(sortByField)) {
+      return String.format("Field[%s] is not in table, given columns[%s]", sortByField, rowHeader.getFieldNames());
+    }
+
+    Table table =
+        new Table(rowHeader, fieldNameToConverterMap, Option.ofNullable(sortByField.isEmpty() ? null : sortByField),
+            Option.ofNullable(isDescending), Option.ofNullable(limit <= 0 ? null : limit)).addAllRows(rows).flip();
 
     return HoodiePrintHelper.print(table);
   }
 
   /**
-   * Render rows in Table
+   * Render rows in Table.
    *
    * @param buffer Table
    * @return output
@@ -79,14 +83,13 @@ public class HoodiePrintHelper {
     String[] header = new String[buffer.getFieldNames().size()];
     buffer.getFieldNames().toArray(header);
 
-    String[][] rows = buffer.getRenderRows().stream()
-        .map(l -> l.stream().toArray(String[]::new))
-        .toArray(String[][]::new);
+    String[][] rows =
+        buffer.getRenderRows().stream().map(l -> l.toArray(new String[l.size()])).toArray(String[][]::new);
     return printTextTable(header, rows);
   }
 
   /**
-   * Render only header of the table
+   * Render only header of the table.
    *
    * @param header Table Header
    * @return output
@@ -94,11 +97,11 @@ public class HoodiePrintHelper {
   private static String print(TableHeader header) {
     String[] head = new String[header.getFieldNames().size()];
     header.getFieldNames().toArray(head);
-    return printTextTable(head, new String[][]{});
+    return printTextTable(head, new String[][] {});
   }
 
   /**
-   * Print Text table
+   * Print Text table.
    *
    * @param headers Headers
    * @param data Table

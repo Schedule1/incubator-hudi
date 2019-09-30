@@ -18,30 +18,30 @@
 
 package org.apache.hudi;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.concurrent.TimeoutException;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.HoodieClientTestUtils;
 import org.apache.hudi.common.util.ConsistencyGuard;
 import org.apache.hudi.common.util.ConsistencyGuardConfig;
 import org.apache.hudi.common.util.FailSafeConsistencyGuard;
+
+import org.apache.hadoop.fs.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.concurrent.TimeoutException;
+
 public class TestConsistencyGuard extends HoodieClientTestHarness {
 
   @Before
-  public void setup() throws IOException {
-    initTempFolderAndPath();
+  public void setup() {
+    initPath();
     initFileSystemWithDefaultConfiguration();
   }
 
   @After
   public void tearDown() throws Exception {
     cleanupFileSystem();
-    cleanupTempFolderAndPath();
   }
 
   @Test
@@ -53,28 +53,24 @@ public class TestConsistencyGuard extends HoodieClientTestHarness {
     ConsistencyGuard passing = new FailSafeConsistencyGuard(fs, getConsistencyGuardConfig(1, 1000, 1000));
     passing.waitTillFileAppears(new Path(basePath + "/partition/path/f1_1-0-1_000.parquet"));
     passing.waitTillFileAppears(new Path(basePath + "/partition/path/f2_1-0-1_000.parquet"));
-    passing.waitTillAllFilesAppear(basePath + "/partition/path",
-        Arrays.asList(basePath + "/partition/path/f1_1-0-1_000.parquet",
-            basePath + "/partition/path/f2_1-0-1_000.parquet"));
+    passing.waitTillAllFilesAppear(basePath + "/partition/path", Arrays
+        .asList(basePath + "/partition/path/f1_1-0-1_000.parquet", basePath + "/partition/path/f2_1-0-1_000.parquet"));
 
     fs.delete(new Path(basePath + "/partition/path/f1_1-0-1_000.parquet"), false);
     fs.delete(new Path(basePath + "/partition/path/f2_1-0-1_000.parquet"), false);
     passing.waitTillFileDisappears(new Path(basePath + "/partition/path/f1_1-0-1_000.parquet"));
     passing.waitTillFileDisappears(new Path(basePath + "/partition/path/f2_1-0-1_000.parquet"));
-    passing.waitTillAllFilesDisappear(basePath + "/partition/path",
-        Arrays.asList(basePath + "/partition/path/f1_1-0-1_000.parquet",
-            basePath + "/partition/path/f2_1-0-1_000.parquet"));
+    passing.waitTillAllFilesDisappear(basePath + "/partition/path", Arrays
+        .asList(basePath + "/partition/path/f1_1-0-1_000.parquet", basePath + "/partition/path/f2_1-0-1_000.parquet"));
   }
 
   @Test(expected = TimeoutException.class)
   public void testCheckFailingAppear() throws Exception {
     HoodieClientTestUtils.fakeDataFile(basePath, "partition/path", "000", "f1");
     ConsistencyGuard passing = new FailSafeConsistencyGuard(fs, getConsistencyGuardConfig());
-    passing.waitTillAllFilesAppear(basePath + "/partition/path",
-        Arrays.asList(basePath + "/partition/path/f1_1-0-2_000.parquet",
-            basePath + "/partition/path/f2_1-0-2_000.parquet"));
+    passing.waitTillAllFilesAppear(basePath + "/partition/path", Arrays
+        .asList(basePath + "/partition/path/f1_1-0-2_000.parquet", basePath + "/partition/path/f2_1-0-2_000.parquet"));
   }
-
 
   @Test(expected = TimeoutException.class)
   public void testCheckFailingAppears() throws Exception {
@@ -87,9 +83,8 @@ public class TestConsistencyGuard extends HoodieClientTestHarness {
   public void testCheckFailingDisappear() throws Exception {
     HoodieClientTestUtils.fakeDataFile(basePath, "partition/path", "000", "f1");
     ConsistencyGuard passing = new FailSafeConsistencyGuard(fs, getConsistencyGuardConfig());
-    passing.waitTillAllFilesDisappear(basePath + "/partition/path",
-        Arrays.asList(basePath + "/partition/path/f1_1-0-1_000.parquet",
-            basePath + "/partition/path/f2_1-0-2_000.parquet"));
+    passing.waitTillAllFilesDisappear(basePath + "/partition/path", Arrays
+        .asList(basePath + "/partition/path/f1_1-0-1_000.parquet", basePath + "/partition/path/f2_1-0-2_000.parquet"));
   }
 
   @Test(expected = TimeoutException.class)

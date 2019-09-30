@@ -18,9 +18,6 @@
 
 package org.apache.hudi.index.bloom;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.config.HoodieWriteConfig;
@@ -30,15 +27,20 @@ import org.apache.hudi.func.LazyIterableIterator;
 import org.apache.hudi.io.HoodieKeyLookupHandle;
 import org.apache.hudi.io.HoodieKeyLookupHandle.KeyLookupResult;
 import org.apache.hudi.table.HoodieTable;
+
 import org.apache.spark.api.java.function.Function2;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import scala.Tuple2;
 
 /**
- * Function performing actual checking of RDD partition containing (fileId, hoodieKeys) against the
- * actual files
+ * Function performing actual checking of RDD partition containing (fileId, hoodieKeys) against the actual files.
  */
-public class HoodieBloomIndexCheckFunction implements
-    Function2<Integer, Iterator<Tuple2<String, HoodieKey>>, Iterator<List<KeyLookupResult>>> {
+public class HoodieBloomIndexCheckFunction
+    implements Function2<Integer, Iterator<Tuple2<String, HoodieKey>>, Iterator<List<KeyLookupResult>>> {
 
   private final HoodieTable hoodieTable;
 
@@ -59,8 +61,7 @@ public class HoodieBloomIndexCheckFunction implements
 
     private HoodieKeyLookupHandle keyLookupHandle;
 
-    LazyKeyCheckIterator(
-        Iterator<Tuple2<String, HoodieKey>> filePartitionRecordKeyTripletItr) {
+    LazyKeyCheckIterator(Iterator<Tuple2<String, HoodieKey>> filePartitionRecordKeyTripletItr) {
       super(filePartitionRecordKeyTripletItr);
     }
 

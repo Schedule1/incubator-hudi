@@ -18,27 +18,37 @@
 
 package org.apache.hudi.common.util.collection;
 
+import org.apache.hudi.common.HoodieCommonTestHarness;
+import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.model.HoodieRecordPayload;
+import org.apache.hudi.common.util.SchemaTestUtil;
+import org.apache.hudi.common.util.SpillableMapTestUtils;
+
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
-import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.common.model.HoodieRecordPayload;
-import org.apache.hudi.common.util.SchemaTestUtil;
-import org.apache.hudi.common.util.SpillableMapTestUtils;
-import org.junit.Assert;
-import org.junit.Test;
 
-public class TestRocksDbBasedMap {
+/**
+ * Tests RocksDB based map {@link RocksDBBasedMap}.
+ */
+public class TestRocksDbBasedMap extends HoodieCommonTestHarness {
 
-  private static final String BASE_OUTPUT_PATH = "/tmp/";
+  @Before
+  public void setUp() {
+    initPath();
+  }
 
   @Test
   public void testSimple() throws IOException, URISyntaxException {
-    RocksDBBasedMap records = new RocksDBBasedMap(BASE_OUTPUT_PATH);
+    RocksDBBasedMap records = new RocksDBBasedMap(basePath);
     List<IndexedRecord> iRecords = SchemaTestUtil.generateHoodieTestRecords(0, 100);
     ((GenericRecord) iRecords.get(0)).get(HoodieRecord.COMMIT_TIME_METADATA_FIELD).toString();
     List<String> recordKeys = SpillableMapTestUtils.upsertRecords(iRecords, records);

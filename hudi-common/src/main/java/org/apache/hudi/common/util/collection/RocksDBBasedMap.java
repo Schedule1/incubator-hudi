@@ -18,14 +18,18 @@
 
 package org.apache.hudi.common.util.collection;
 
+import org.apache.hudi.common.util.RocksDBDAO;
+import org.apache.hudi.exception.HoodieNotSupportedException;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import org.apache.hudi.common.util.RocksDBDAO;
-import org.apache.hudi.exception.HoodieNotSupportedException;
 
+/**
+ * A map's implementation based on RocksDB.
+ */
 public final class RocksDBBasedMap<K extends Serializable, R extends Serializable> implements Map<K, R> {
 
   private static final String COL_FAMILY_NAME = "map_handle";
@@ -41,7 +45,7 @@ public final class RocksDBBasedMap<K extends Serializable, R extends Serializabl
 
   @Override
   public int size() {
-    return (int)getRocksDBDAO().prefixSearch(columnFamilyName, "").count();
+    return (int) getRocksDBDAO().prefixSearch(columnFamilyName, "").count();
   }
 
   @Override
@@ -62,7 +66,7 @@ public final class RocksDBBasedMap<K extends Serializable, R extends Serializabl
 
   @Override
   public R get(Object key) {
-    return getRocksDBDAO().get(columnFamilyName, (Serializable)key);
+    return getRocksDBDAO().get(columnFamilyName, (Serializable) key);
   }
 
   @Override
@@ -80,11 +84,7 @@ public final class RocksDBBasedMap<K extends Serializable, R extends Serializabl
 
   @Override
   public void putAll(Map<? extends K, ? extends R> m) {
-    getRocksDBDAO().writeBatch(batch -> {
-      m.entrySet().forEach(entry -> {
-        getRocksDBDAO().putInBatch(batch, columnFamilyName, entry.getKey(), entry.getValue());
-      });
-    });
+    getRocksDBDAO().writeBatch(batch -> m.forEach((key, value) -> getRocksDBDAO().putInBatch(batch, columnFamilyName, key, value)));
   }
 
   private RocksDBDAO getRocksDBDAO() {
@@ -119,7 +119,6 @@ public final class RocksDBBasedMap<K extends Serializable, R extends Serializabl
   }
 
   public Iterator<R> iterator() {
-    return getRocksDBDAO().prefixSearch(columnFamilyName, "")
-        .map(p -> (R)(p.getValue())).iterator();
+    return getRocksDBDAO().prefixSearch(columnFamilyName, "").map(p -> (R) (p.getValue())).iterator();
   }
 }

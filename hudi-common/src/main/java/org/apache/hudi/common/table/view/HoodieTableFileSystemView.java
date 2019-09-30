@@ -18,15 +18,6 @@
 
 package org.apache.hudi.common.table.view;
 
-import com.google.common.base.Preconditions;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hudi.common.model.CompactionOperation;
 import org.apache.hudi.common.model.HoodieFileGroup;
 import org.apache.hudi.common.model.HoodieFileGroupId;
@@ -35,28 +26,40 @@ import org.apache.hudi.common.table.HoodieTimeline;
 import org.apache.hudi.common.table.TableFileSystemView;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
+
+import com.google.common.base.Preconditions;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * TableFileSystemView Implementations based on in-memory storage.
+ * 
  * @see TableFileSystemView
  * @since 0.3.0
  */
 public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystemView {
 
-  private static Logger log = LogManager.getLogger(HoodieTableFileSystemView.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieTableFileSystemView.class);
 
   // mapping from partition paths to file groups contained within them
   protected Map<String, List<HoodieFileGroup>> partitionToFileGroupsMap;
 
   /**
-   * PartitionPath + File-Id to pending compaction instant time
+   * PartitionPath + File-Id to pending compaction instant time.
    */
   protected Map<HoodieFileGroupId, Pair<String, CompactionOperation>> fgIdToPendingCompaction;
 
   /**
-   * Flag to determine if closed
+   * Flag to determine if closed.
    */
   private boolean closed = false;
 
@@ -65,14 +68,14 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
   }
 
   /**
-   * Create a file system view, as of the given timeline
+   * Create a file system view, as of the given timeline.
    */
   public HoodieTableFileSystemView(HoodieTableMetaClient metaClient, HoodieTimeline visibleActiveTimeline) {
     this(metaClient, visibleActiveTimeline, false);
   }
 
   /**
-   * Create a file system view, as of the given timeline
+   * Create a file system view, as of the given timeline.
    */
   public HoodieTableFileSystemView(HoodieTableMetaClient metaClient, HoodieTimeline visibleActiveTimeline,
       boolean enableIncrementalTimelineSync) {
@@ -115,13 +118,11 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
    *
    * @deprecated
    */
-  private void readObject(java.io.ObjectInputStream in)
-      throws IOException, ClassNotFoundException {
+  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
     in.defaultReadObject();
   }
 
-  private void writeObject(java.io.ObjectOutputStream out)
-      throws IOException {
+  private void writeObject(java.io.ObjectOutputStream out) throws IOException {
     out.defaultWriteObject();
   }
 
@@ -133,10 +134,9 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
   @Override
   protected void resetPendingCompactionOperations(Stream<Pair<String, CompactionOperation>> operations) {
     // Build fileId to Pending Compaction Instants
-    this.fgIdToPendingCompaction = createFileIdToPendingCompactionMap(
-        operations.map(entry -> {
-          return Pair.of(entry.getValue().getFileGroupId(), Pair.of(entry.getKey(),entry.getValue()));
-        }).collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
+    this.fgIdToPendingCompaction = createFileIdToPendingCompactionMap(operations.map(entry -> {
+      return Pair.of(entry.getValue().getFileGroupId(), Pair.of(entry.getKey(), entry.getValue()));
+    }).collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
   }
 
   @Override
@@ -161,8 +161,8 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
   }
 
   /**
-   * Given a partition path, obtain all filegroups within that. All methods, that work at the
-   * partition level go through this.
+   * Given a partition path, obtain all filegroups within that. All methods, that work at the partition level go through
+   * this.
    */
   @Override
   Stream<HoodieFileGroup> fetchAllStoredFileGroups(String partition) {
@@ -193,7 +193,7 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
 
   @Override
   protected void storePartitionView(String partitionPath, List<HoodieFileGroup> fileGroups) {
-    log.info("Adding file-groups for partition :" + partitionPath + ", #FileGroups=" + fileGroups.size());
+    LOG.info("Adding file-groups for partition :" + partitionPath + ", #FileGroups=" + fileGroups.size());
     List<HoodieFileGroup> newList = new ArrayList<>(fileGroups);
     partitionToFileGroupsMap.put(partitionPath, newList);
   }
@@ -205,6 +205,7 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
     });
   }
 
+  @Override
   public void close() {
     closed = true;
     super.reset();
@@ -212,6 +213,7 @@ public class HoodieTableFileSystemView extends IncrementalTimelineSyncFileSystem
     fgIdToPendingCompaction = null;
   }
 
+  @Override
   public boolean isClosed() {
     return closed;
   }

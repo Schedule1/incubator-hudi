@@ -16,10 +16,13 @@
  * limitations under the License.
  */
 
-
 package org.apache.hudi.io.compact.strategy;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.hudi.avro.model.HoodieCompactionOperation;
+import org.apache.hudi.avro.model.HoodieCompactionPlan;
+import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.exception.HoodieException;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
@@ -28,34 +31,28 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.hudi.avro.model.HoodieCompactionOperation;
-import org.apache.hudi.avro.model.HoodieCompactionPlan;
-import org.apache.hudi.config.HoodieWriteConfig;
-import org.apache.hudi.exception.HoodieException;
 
 /**
- * This strategy orders compactions in reverse order of creation of Hive Partitions. It helps to
- * compact data in latest partitions first and then older capped at the Total_IO allowed.
+ * This strategy orders compactions in reverse order of creation of Hive Partitions. It helps to compact data in latest
+ * partitions first and then older capped at the Total_IO allowed.
  */
 public class DayBasedCompactionStrategy extends CompactionStrategy {
 
   // For now, use SimpleDateFormat as default partition format
   protected static String datePartitionFormat = "yyyy/MM/dd";
   // Sorts compaction in LastInFirstCompacted order
-  protected static Comparator<String> comparator = (String leftPartition,
-      String rightPartition) -> {
+  protected static Comparator<String> comparator = (String leftPartition, String rightPartition) -> {
     try {
-      Date left = new SimpleDateFormat(datePartitionFormat, Locale.ENGLISH)
-          .parse(leftPartition);
-      Date right = new SimpleDateFormat(datePartitionFormat, Locale.ENGLISH)
-          .parse(rightPartition);
+      leftPartition = getPartitionPathWithoutPartitionKeys(leftPartition);
+      rightPartition = getPartitionPathWithoutPartitionKeys(rightPartition);
+      Date left = new SimpleDateFormat(datePartitionFormat, Locale.ENGLISH).parse(leftPartition);
+      Date right = new SimpleDateFormat(datePartitionFormat, Locale.ENGLISH).parse(rightPartition);
       return left.after(right) ? -1 : right.after(left) ? 1 : 0;
     } catch (ParseException e) {
       throw new HoodieException("Invalid Partition Date Format", e);
     }
   };
 
-  @VisibleForTesting
   public Comparator<String> getComparator() {
     return comparator;
   }
@@ -65,19 +62,26 @@ public class DayBasedCompactionStrategy extends CompactionStrategy {
       List<HoodieCompactionOperation> operations, List<HoodieCompactionPlan> pendingCompactionPlans) {
     // Iterate through the operations and accept operations as long as we are within the configured target partitions
     // limit
-    List<HoodieCompactionOperation> filteredList = operations.stream()
+    return operations.stream()
         .collect(Collectors.groupingBy(HoodieCompactionOperation::getPartitionPath)).entrySet().stream()
         .sorted(Map.Entry.comparingByKey(comparator)).limit(writeConfig.getTargetPartitionsPerDayBasedCompaction())
-        .flatMap(e -> e.getValue().stream())
-        .collect(Collectors.toList());
-    return filteredList;
+        .flatMap(e -> e.getValue().stream()).collect(Collectors.toList());
   }
 
   @Override
   public List<String> filterPartitionPaths(HoodieWriteConfig writeConfig, List<String> allPartitionPaths) {
-    List<String> filteredPartitionPaths = allPartitionPaths.stream().map(partition -> partition.replace("/", "-"))
+    return allPartitionPaths.stream().map(partition -> partition.replace("/", "-"))
         .sorted(Comparator.reverseOrder()).map(partitionPath -> partitionPath.replace("-", "/"))
         .collect(Collectors.toList()).subList(0, writeConfig.getTargetPartitionsPerDayBasedCompaction());
-    return filteredPartitionPaths;
+  }
+
+  /**
+   * If is Hive style partition path, convert it to regular partition path. e.g. year=2019/month=11/day=24 => 2019/11/24
+   */
+  protected static String getPartitionPathWithoutPartitionKeys(String partitionPath) {
+    if (partitionPath.contains("=")) {
+      return partitionPath.replaceFirst(".*?=", "").replaceAll("/.*?=", "/");
+    }
+    return partitionPath;
   }
 }

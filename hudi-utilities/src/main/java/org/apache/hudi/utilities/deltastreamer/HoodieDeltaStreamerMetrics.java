@@ -18,14 +18,15 @@
 
 package org.apache.hudi.utilities.deltastreamer;
 
-import com.codahale.metrics.Timer;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.metrics.Metrics;
 
+import com.codahale.metrics.Timer;
+
 public class HoodieDeltaStreamerMetrics {
 
-  private HoodieWriteConfig config = null;
-  private String tableName = null;
+  private HoodieWriteConfig config;
+  private String tableName;
 
   public String overallTimerName = null;
   public String hiveSyncTimerName = null;

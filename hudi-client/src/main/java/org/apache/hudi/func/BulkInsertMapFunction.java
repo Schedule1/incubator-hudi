@@ -18,29 +18,30 @@
 
 package org.apache.hudi.func;
 
-import java.util.Iterator;
-import java.util.List;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
+
 import org.apache.spark.api.java.function.Function2;
 
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * Map function that handles a sorted stream of HoodieRecords
+ * Map function that handles a sorted stream of HoodieRecords.
  */
-public class BulkInsertMapFunction<T extends HoodieRecordPayload> implements
-    Function2<Integer, Iterator<HoodieRecord<T>>, Iterator<List<WriteStatus>>> {
+public class BulkInsertMapFunction<T extends HoodieRecordPayload>
+    implements Function2<Integer, Iterator<HoodieRecord<T>>, Iterator<List<WriteStatus>>> {
 
   private String commitTime;
   private HoodieWriteConfig config;
   private HoodieTable<T> hoodieTable;
   private List<String> fileIDPrefixes;
 
-  public BulkInsertMapFunction(String commitTime, HoodieWriteConfig config,
-      HoodieTable<T> hoodieTable, List<String> fileIDPrefixes) {
+  public BulkInsertMapFunction(String commitTime, HoodieWriteConfig config, HoodieTable<T> hoodieTable,
+      List<String> fileIDPrefixes) {
     this.commitTime = commitTime;
     this.config = config;
     this.hoodieTable = hoodieTable;

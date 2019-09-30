@@ -18,31 +18,25 @@
 
 package org.apache.hudi.hadoop;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import org.apache.hudi.common.util.collection.Pair;
+
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hudi.common.util.collection.Pair;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TestRecordReaderValueIterator {
 
   @Test
   public void testValueIterator() {
-    String[] values = new String[]{
-        "hoodie",
-        "efficient",
-        "new project",
-        "realtime",
-        "spark",
-        "dataset",
-    };
-    List<Pair<Integer, String>> entries = IntStream.range(0, values.length)
-        .boxed().map(idx -> Pair.of(idx, values[idx])).collect(Collectors.toList());
+    String[] values = new String[] {"hoodie", "efficient", "new project", "realtime", "spark", "table",};
+    List<Pair<Integer, String>> entries =
+        IntStream.range(0, values.length).boxed().map(idx -> Pair.of(idx, values[idx])).collect(Collectors.toList());
     TestRecordReader reader = new TestRecordReader(entries);
     RecordReaderValueIterator<IntWritable, Text> itr = new RecordReaderValueIterator<IntWritable, Text>(reader);
     for (int i = 0; i < values.length; i++) {
@@ -54,7 +48,7 @@ public class TestRecordReaderValueIterator {
   }
 
   /**
-   * Simple replay record reader for unit-testing
+   * Simple replay record reader for unit-testing.
    */
   private static class TestRecordReader implements RecordReader<IntWritable, Text> {
 
@@ -65,9 +59,8 @@ public class TestRecordReaderValueIterator {
       this.entries = entries;
     }
 
-
     @Override
-    public boolean next(IntWritable key, Text value) throws IOException {
+    public boolean next(IntWritable key, Text value) {
       if (currIndex >= entries.size()) {
         return false;
       }
@@ -88,17 +81,17 @@ public class TestRecordReaderValueIterator {
     }
 
     @Override
-    public long getPos() throws IOException {
+    public long getPos() {
       return currIndex;
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
 
     }
 
     @Override
-    public float getProgress() throws IOException {
+    public float getProgress() {
       return (currIndex * 1.0F) / entries.size();
     }
   }

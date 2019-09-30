@@ -18,8 +18,6 @@
 
 package org.apache.hudi.index;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hudi.HoodieClientTestHarness;
 import org.apache.hudi.common.HoodieTestDataGenerator;
 import org.apache.hudi.common.util.Option;
@@ -31,6 +29,9 @@ import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.hbase.DefaultHBaseQPSResourceAllocator;
 import org.apache.hudi.index.hbase.HBaseIndex;
 import org.apache.hudi.index.hbase.HBaseIndexQPSResourceAllocator;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,17 +51,16 @@ public class TestHBaseQPSResourceAllocator extends HoodieClientTestHarness {
     hbaseConfig = utility.getConnection().getConfiguration();
     initSparkContexts("TestQPSResourceAllocator");
 
-    initTempFolderAndPath();
+    initPath();
     basePath = folder.getRoot().getAbsolutePath() + QPS_TEST_SUFFIX_PATH;
     // Initialize table
-    initTableType();
+    initMetaClient();
   }
 
   @After
   public void tearDown() throws Exception {
     cleanupSparkContexts();
-    cleanupTempFolderAndPath();
-    cleanupTableType();
+    cleanupMetaClient();
     if (utility != null) {
       utility.shutdownMiniCluster();
     }
@@ -106,22 +106,18 @@ public class TestHBaseQPSResourceAllocator extends HoodieClientTestHarness {
 
   private HoodieWriteConfig.Builder getConfigBuilder(HoodieHBaseIndexConfig hoodieHBaseIndexConfig) {
     return HoodieWriteConfig.newBuilder().withPath(basePath).withSchema(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA)
-        .withParallelism(1, 1).withCompactionConfig(
-            HoodieCompactionConfig.newBuilder().compactionSmallFileSize(1024 * 1024).withInlineCompaction(false)
-                .build()).withAutoCommit(false)
-        .withStorageConfig(HoodieStorageConfig.newBuilder().limitFileSize(1024 * 1024).build())
-        .forTable("test-trip-table").withIndexConfig(
-            HoodieIndexConfig.newBuilder().withIndexType(HoodieIndex.IndexType.HBASE)
-                .withHBaseIndexConfig(hoodieHBaseIndexConfig)
-                .build());
+        .withParallelism(1, 1)
+        .withCompactionConfig(HoodieCompactionConfig.newBuilder().compactionSmallFileSize(1024 * 1024)
+            .withInlineCompaction(false).build())
+        .withAutoCommit(false).withStorageConfig(HoodieStorageConfig.newBuilder().limitFileSize(1024 * 1024).build())
+        .forTable("test-trip-table").withIndexConfig(HoodieIndexConfig.newBuilder()
+            .withIndexType(HoodieIndex.IndexType.HBASE).withHBaseIndexConfig(hoodieHBaseIndexConfig).build());
   }
 
   private HoodieHBaseIndexConfig getConfigWithResourceAllocator(Option<String> resourceAllocatorClass) {
-    HoodieHBaseIndexConfig.Builder builder =
-        new HoodieHBaseIndexConfig.Builder()
-            .hbaseZkPort(Integer.valueOf(hbaseConfig.get("hbase.zookeeper.property.clientPort")))
-            .hbaseZkQuorum(hbaseConfig.get("hbase.zookeeper.quorum")).hbaseTableName(tableName)
-            .hbaseIndexGetBatchSize(100);
+    HoodieHBaseIndexConfig.Builder builder = new HoodieHBaseIndexConfig.Builder()
+        .hbaseZkPort(Integer.parseInt(hbaseConfig.get("hbase.zookeeper.property.clientPort")))
+        .hbaseZkQuorum(hbaseConfig.get("hbase.zookeeper.quorum")).hbaseTableName(tableName).hbaseIndexGetBatchSize(100);
     if (resourceAllocatorClass.isPresent()) {
       builder.withQPSResourceAllocatorType(resourceAllocatorClass.get());
     }

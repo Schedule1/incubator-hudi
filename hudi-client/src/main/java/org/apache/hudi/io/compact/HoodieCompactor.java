@@ -18,42 +18,41 @@
 
 package org.apache.hudi.io.compact;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Set;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.table.HoodieTable;
+
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Set;
+
 /**
- * A HoodieCompactor runs compaction on a hoodie table
+ * A HoodieCompactor runs compaction on a hoodie table.
  */
 public interface HoodieCompactor extends Serializable {
 
   /**
-   * Generate a new compaction plan for scheduling
+   * Generate a new compaction plan for scheduling.
    *
-   * @param jsc                  Spark Context
-   * @param hoodieTable          Hoodie Table
-   * @param config               Hoodie Write Configuration
+   * @param jsc Spark Context
+   * @param hoodieTable Hoodie Table
+   * @param config Hoodie Write Configuration
    * @param compactionCommitTime scheduled compaction commit time
    * @param fgIdsInPendingCompactions partition-fileId pairs for which compaction is pending
    * @return Compaction Plan
    * @throws IOException when encountering errors
    */
-  HoodieCompactionPlan generateCompactionPlan(JavaSparkContext jsc,
-      HoodieTable hoodieTable, HoodieWriteConfig config, String compactionCommitTime,
-      Set<HoodieFileGroupId> fgIdsInPendingCompactions)
-      throws IOException;
+  HoodieCompactionPlan generateCompactionPlan(JavaSparkContext jsc, HoodieTable hoodieTable, HoodieWriteConfig config,
+      String compactionCommitTime, Set<HoodieFileGroupId> fgIdsInPendingCompactions) throws IOException;
 
   /**
-   * Execute compaction operations and report back status
+   * Execute compaction operations and report back status.
    */
-  JavaRDD<WriteStatus> compact(JavaSparkContext jsc,
-      HoodieCompactionPlan compactionPlan, HoodieTable hoodieTable, HoodieWriteConfig config,
-      String compactionInstantTime) throws IOException;
+  JavaRDD<WriteStatus> compact(JavaSparkContext jsc, HoodieCompactionPlan compactionPlan, HoodieTable hoodieTable,
+      HoodieWriteConfig config, String compactionInstantTime) throws IOException;
 }
