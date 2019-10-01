@@ -41,6 +41,10 @@
       <id>libs-release</id>
       <url>https://repo.spring.io/libs-release/</url>
     </repository>
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
   </repositories>
 
   <build>
