@@ -58,12 +58,12 @@
     <repository>
       <id>dp-artifactory-main</id>
       <name>ip-172-31-9-93.us-west-2.compute.internal-releases</name>
-      <url>http://34.218.183.193:8081/artifactory/maven-staging-local</url>
+      <url>http://172.31.9.93:8081/artifactory/maven-staging-local</url>
     </repository>
     <snapshotRepository>
       <id>dp-artifactory-snapshots</id>
       <name>ip-172-31-9-93.us-west-2.compute.internal-snapshots</name>
-      <url>http://34.218.183.193:8081/artifactory/maven-staging-local</url>
+      <url>http://172.31.9.93:8081/artifactory/maven-staging-local</url>
     </snapshotRepository>
   </distributionManagement>
 
