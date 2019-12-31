@@ -136,6 +136,7 @@ public class ObjectSizeCalculator {
 
   private final LoadingCache<Class<?>, ClassSizeInfo> classSizeInfos =
       CacheBuilder.newBuilder().build(new CacheLoader<Class<?>, ClassSizeInfo>() {
+        @Override
         public ClassSizeInfo load(Class<?> clazz) {
           return new ClassSizeInfo(clazz);
         }
