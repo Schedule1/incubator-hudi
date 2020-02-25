@@ -50,7 +50,7 @@
     <module>packaging/hudi-utilities-bundle</module>
     <module>packaging/hudi-timeline-server-bundle</module>
     <module>docker/hoodie/hadoop</module>
-    <module>hudi-integ-test</module>
+<!--    <module>hudi-integ-test</module>-->
   </modules>
 
   <licenses>
@@ -868,6 +868,11 @@
       <id>libs-release</id>
       <url>https://repo.spring.io/libs-release/</url>
     </repository>
+    <repository>
+      <id>cloudera-repo</id>
+      <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+    </repository>
+
   </repositories>
 
   <profiles>
