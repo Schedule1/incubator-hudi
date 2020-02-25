@@ -18,26 +18,27 @@
 
 package org.apache.hudi.common.util;
 
-import org.apache.avro.Schema;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.collection.ExternalSpillableMap;
+
+import org.apache.avro.Schema;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 /**
- * Size Estimator for Hoodie record payload
+ * Size Estimator for Hoodie record payload.
+ * 
  * @param <T>
  */
 public class HoodieRecordSizeEstimator<T extends HoodieRecordPayload> implements SizeEstimator<HoodieRecord<T>> {
 
-  private static Logger log = LogManager.getLogger(HoodieRecordSizeEstimator.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieRecordSizeEstimator.class);
 
-  // Schema used to get GenericRecord from HoodieRecordPayload then convert to bytes and vice-versa
-  private final Schema schema;
+  private final long sizeOfSchema;
 
   public HoodieRecordSizeEstimator(Schema schema) {
-    this.schema = schema;
+    sizeOfSchema = ObjectSizeCalculator.getObjectSize(schema);
   }
 
   @Override
@@ -47,8 +48,9 @@ public class HoodieRecordSizeEstimator<T extends HoodieRecordPayload> implements
     // note the sizes and differences. A correct estimation in such cases is handled in
     /** {@link ExternalSpillableMap} **/
     long sizeOfRecord = ObjectSizeCalculator.getObjectSize(hoodieRecord);
-    long sizeOfSchema = ObjectSizeCalculator.getObjectSize(schema);
-    log.info("SizeOfRecord => " + sizeOfRecord + " SizeOfSchema => " + sizeOfSchema);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("SizeOfRecord => " + sizeOfRecord + " SizeOfSchema => " + sizeOfSchema);
+    }
     return sizeOfRecord;
   }
 }

@@ -19,7 +19,7 @@
   <parent>
     <artifactId>hudi</artifactId>
     <groupId>org.apache.hudi</groupId>
-    <version>0.5.1-SNAPSHOT</version>
+    <version>0.5.2-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -27,7 +27,7 @@
   <packaging>jar</packaging>
 
   <properties>
-    <notice.dir>${project.basedir}/src/main/resources/META-INF</notice.dir>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
   <build>
@@ -110,7 +110,6 @@
     <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
-      <version>1.48</version>
     </dependency>
 
     <dependency>
@@ -123,6 +122,7 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <classifier>tests</classifier>
+      <scope>test</scope>
       <!-- Need these exclusions to make sure JavaSparkContext can be setup. https://issues.apache.org/jira/browse/SPARK-1693 -->
       <exclusions>
         <exclusion>

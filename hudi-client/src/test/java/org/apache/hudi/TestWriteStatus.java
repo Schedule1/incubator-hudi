@@ -18,24 +18,24 @@
 
 package org.apache.hudi;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
 import org.apache.hudi.common.model.HoodieRecord;
+
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 public class TestWriteStatus {
   @Test
-  public void testFailureFraction() throws IOException  {
+  public void testFailureFraction() {
     WriteStatus status = new WriteStatus(true, 0.1);
     Throwable t = new Exception("some error in writing");
     for (int i = 0; i < 1000; i++) {
       status.markFailure(Mockito.mock(HoodieRecord.class), t, null);
     }
     assertTrue(status.getFailedRecords().size() > 0);
-    assertTrue(status.getFailedRecords().size() < 150); //150 instead of 100, to prevent flaky test
+    assertTrue(status.getFailedRecords().size() < 150); // 150 instead of 100, to prevent flaky test
     assertTrue(status.hasErrors());
   }
 

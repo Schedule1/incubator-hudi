@@ -18,16 +18,21 @@
 
 package org.apache.hudi.common.table.timeline.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.hudi.common.model.CompactionOperation;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The data transfer object of compaction.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CompactionOpDTO {
 
@@ -55,23 +60,23 @@ public class CompactionOpDTO {
   @JsonProperty("metrics")
   private Map<String, Double> metrics;
 
-  public static CompactionOpDTO fromCompactionOperation(String compactionInstantTime,
-      CompactionOperation op) {
+  public static CompactionOpDTO fromCompactionOperation(String compactionInstantTime, CompactionOperation op) {
     CompactionOpDTO dto = new CompactionOpDTO();
     dto.fileId = op.getFileId();
     dto.compactionInstantTime = compactionInstantTime;
     dto.baseInstantTime = op.getBaseInstantTime();
     dto.dataFileCommitTime = op.getDataFileCommitTime().orElse(null);
-    dto.dataFilePath = op.getDataFilePath().orElse(null);
-    dto.deltaFilePaths = new ArrayList<>(op.getDeltaFilePaths());
+    dto.dataFilePath = op.getDataFileName().orElse(null);
+    dto.deltaFilePaths = new ArrayList<>(op.getDeltaFileNames());
     dto.partitionPath = op.getPartitionPath();
     dto.metrics = op.getMetrics() == null ? new HashMap<>() : new HashMap<>(op.getMetrics());
     return dto;
   }
 
   public static Pair<String, CompactionOperation> toCompactionOperation(CompactionOpDTO dto) {
-    return Pair.of(dto.compactionInstantTime, new CompactionOperation(dto.fileId, dto.partitionPath,
-        dto.baseInstantTime, Option.ofNullable(dto.dataFileCommitTime), dto.deltaFilePaths,
-        Option.ofNullable(dto.dataFilePath), dto.metrics));
+    return Pair.of(dto.compactionInstantTime,
+        new CompactionOperation(dto.fileId, dto.partitionPath, dto.baseInstantTime,
+            Option.ofNullable(dto.dataFileCommitTime), dto.deltaFilePaths, Option.ofNullable(dto.dataFilePath),
+            dto.metrics));
   }
 }

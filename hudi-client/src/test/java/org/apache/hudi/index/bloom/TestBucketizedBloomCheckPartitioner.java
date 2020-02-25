@@ -18,16 +18,18 @@
 
 package org.apache.hudi.index.bloom;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import org.apache.hudi.common.util.collection.Pair;
+
+import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.hudi.common.util.collection.Pair;
-import org.junit.Test;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class TestBucketizedBloomCheckPartitioner {
 
@@ -45,12 +47,9 @@ public class TestBucketizedBloomCheckPartitioner {
     assertEquals("f1 should have 4 buckets", 4, assignments.get("f1").size());
     assertEquals("f2 should have 4 buckets", 4, assignments.get("f2").size());
     assertEquals("f3 should have 2 buckets", 2, assignments.get("f3").size());
-    assertArrayEquals("f1 spread across 3 partitions", new Integer[]{0, 0, 1, 3},
-        assignments.get("f1").toArray());
-    assertArrayEquals("f2 spread across 3 partitions", new Integer[]{1, 2, 2, 0},
-        assignments.get("f2").toArray());
-    assertArrayEquals("f3 spread across 2 partitions", new Integer[]{3, 1},
-        assignments.get("f3").toArray());
+    assertArrayEquals("f1 spread across 3 partitions", new Integer[] {0, 0, 1, 3}, assignments.get("f1").toArray());
+    assertArrayEquals("f2 spread across 3 partitions", new Integer[] {1, 2, 2, 0}, assignments.get("f2").toArray());
+    assertArrayEquals("f3 spread across 2 partitions", new Integer[] {3, 1}, assignments.get("f3").toArray());
   }
 
   @Test
@@ -63,11 +62,11 @@ public class TestBucketizedBloomCheckPartitioner {
     };
     BucketizedBloomCheckPartitioner partitioner = new BucketizedBloomCheckPartitioner(100, comparisons1, 10);
     Map<String, List<Integer>> assignments = partitioner.getFileGroupToPartitions();
-    assignments.entrySet().stream().forEach(e -> assertEquals(10, e.getValue().size()));
-    Map<Integer, Long> partitionToNumBuckets = assignments.entrySet().stream()
-        .flatMap(e -> e.getValue().stream().map(p -> Pair.of(p, e.getKey())))
-        .collect(Collectors.groupingBy(Pair::getLeft, Collectors.counting()));
-    partitionToNumBuckets.entrySet().stream().forEach(e -> assertEquals(1L, e.getValue().longValue()));
+    assignments.forEach((key, value) -> assertEquals(10, value.size()));
+    Map<Integer, Long> partitionToNumBuckets =
+        assignments.entrySet().stream().flatMap(e -> e.getValue().stream().map(p -> Pair.of(p, e.getKey())))
+            .collect(Collectors.groupingBy(Pair::getLeft, Collectors.counting()));
+    partitionToNumBuckets.forEach((key, value) -> assertEquals(1L, value.longValue()));
   }
 
   @Test

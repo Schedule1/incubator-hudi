@@ -18,38 +18,42 @@
 
 package org.apache.hudi.utilities.sources;
 
-import java.util.Iterator;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.TypedProperties;
 import org.apache.hudi.utilities.schema.SchemaProvider;
 import org.apache.hudi.utilities.sources.config.TestSourceConfig;
+
+import org.apache.avro.generic.GenericRecord;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.SparkSession;
+
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A Test DataSource which scales test-data generation by using spark parallelism.
  */
 public class DistributedTestDataSource extends AbstractBaseTestSource {
 
+  private static final Logger LOG = LogManager.getLogger(DistributedTestDataSource.class);
+
   private final int numTestSourcePartitions;
 
-  public DistributedTestDataSource(TypedProperties props,
-      JavaSparkContext sparkContext, SparkSession sparkSession,
+  public DistributedTestDataSource(TypedProperties props, JavaSparkContext sparkContext, SparkSession sparkSession,
       SchemaProvider schemaProvider) {
     super(props, sparkContext, sparkSession, schemaProvider);
-    this.numTestSourcePartitions = props.getInteger(TestSourceConfig.NUM_SOURCE_PARTITIONS_PROP,
-        TestSourceConfig.DEFAULT_NUM_SOURCE_PARTITIONS);
+    this.numTestSourcePartitions =
+        props.getInteger(TestSourceConfig.NUM_SOURCE_PARTITIONS_PROP, TestSourceConfig.DEFAULT_NUM_SOURCE_PARTITIONS);
   }
 
   @Override
   protected InputBatch<JavaRDD<GenericRecord>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {
     int nextCommitNum = lastCkptStr.map(s -> Integer.parseInt(s) + 1).orElse(0);
     String commitTime = String.format("%05d", nextCommitNum);
-    log.info("Source Limit is set to " + sourceLimit);
+    LOG.info("Source Limit is set to " + sourceLimit);
 
     // No new data.
     if (sourceLimit <= 0) {
@@ -60,20 +64,20 @@ public class DistributedTestDataSource extends AbstractBaseTestSource {
     newProps.putAll(props);
 
     // Set the maxUniqueRecords per partition for TestDataSource
-    int maxUniqueRecords = props.getInteger(TestSourceConfig.MAX_UNIQUE_RECORDS_PROP,
-        TestSourceConfig.DEFAULT_MAX_UNIQUE_RECORDS);
+    int maxUniqueRecords =
+        props.getInteger(TestSourceConfig.MAX_UNIQUE_RECORDS_PROP, TestSourceConfig.DEFAULT_MAX_UNIQUE_RECORDS);
     String maxUniqueRecordsPerPartition = String.valueOf(Math.max(1, maxUniqueRecords / numTestSourcePartitions));
     newProps.setProperty(TestSourceConfig.MAX_UNIQUE_RECORDS_PROP, maxUniqueRecordsPerPartition);
     int perPartitionSourceLimit = Math.max(1, (int) (sourceLimit / numTestSourcePartitions));
-    JavaRDD<GenericRecord> avroRDD = sparkContext.parallelize(IntStream.range(0, numTestSourcePartitions).boxed()
-        .collect(Collectors.toList()), numTestSourcePartitions).mapPartitionsWithIndex((p, idx) -> {
-          log.info("Initializing source with newProps=" + newProps);
-          if (!dataGeneratorMap.containsKey(p)) {
-            initDataGen(newProps, p);
-          }
-          Iterator<GenericRecord> itr = fetchNextBatch(newProps, perPartitionSourceLimit, commitTime, p).iterator();
-          return itr;
-        }, true);
+    JavaRDD<GenericRecord> avroRDD =
+        sparkContext.parallelize(IntStream.range(0, numTestSourcePartitions).boxed().collect(Collectors.toList()),
+            numTestSourcePartitions).mapPartitionsWithIndex((p, idx) -> {
+              LOG.info("Initializing source with newProps=" + newProps);
+              if (!dataGeneratorMap.containsKey(p)) {
+                initDataGen(newProps, p);
+              }
+              return fetchNextBatch(newProps, perPartitionSourceLimit, commitTime, p).iterator();
+            }, true);
     return new InputBatch<>(Option.of(avroRDD), commitTime);
   }
 }

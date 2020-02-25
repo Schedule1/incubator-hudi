@@ -18,17 +18,19 @@
 
 package org.apache.hudi.common.io.storage;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.common.util.ConsistencyGuard;
 import org.apache.hudi.exception.HoodieException;
 
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.Path;
+
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
- * Wrapper over <code>FSDataOutputStream</code> to keep track of the size of the written bytes. This
- * gives a cheap way to check on the underlying file size.
+ * Wrapper over <code>FSDataOutputStream</code> to keep track of the size of the written bytes. This gives a cheap way
+ * to check on the underlying file size.
  */
 public class SizeAwareFSDataOutputStream extends FSDataOutputStream {
 
@@ -41,9 +43,9 @@ public class SizeAwareFSDataOutputStream extends FSDataOutputStream {
   // Consistency guard
   private final ConsistencyGuard consistencyGuard;
 
-  public SizeAwareFSDataOutputStream(Path path, FSDataOutputStream out,
-      ConsistencyGuard consistencyGuard, Runnable closeCallback) throws IOException {
-    super(out);
+  public SizeAwareFSDataOutputStream(Path path, FSDataOutputStream out, ConsistencyGuard consistencyGuard,
+      Runnable closeCallback) throws IOException {
+    super(out, null);
     this.path = path;
     this.closeCallback = closeCallback;
     this.consistencyGuard = consistencyGuard;

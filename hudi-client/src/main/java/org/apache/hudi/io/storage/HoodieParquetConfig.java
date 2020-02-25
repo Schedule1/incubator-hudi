@@ -18,8 +18,9 @@
 
 package org.apache.hudi.io.storage;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.avro.HoodieAvroWriteSupport;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 public class HoodieParquetConfig {
@@ -32,9 +33,8 @@ public class HoodieParquetConfig {
   private Configuration hadoopConf;
   private double compressionRatio;
 
-  public HoodieParquetConfig(HoodieAvroWriteSupport writeSupport,
-      CompressionCodecName compressionCodecName, int blockSize, int pageSize, long maxFileSize,
-      Configuration hadoopConf, double compressionRatio) {
+  public HoodieParquetConfig(HoodieAvroWriteSupport writeSupport, CompressionCodecName compressionCodecName,
+      int blockSize, int pageSize, long maxFileSize, Configuration hadoopConf, double compressionRatio) {
     this.writeSupport = writeSupport;
     this.compressionCodecName = compressionCodecName;
     this.blockSize = blockSize;

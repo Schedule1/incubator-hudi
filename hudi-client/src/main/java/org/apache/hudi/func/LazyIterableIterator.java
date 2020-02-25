@@ -21,20 +21,19 @@ package org.apache.hudi.func;
 import java.util.Iterator;
 
 /**
- * (NOTE: Adapted from Apache SystemML) This class is a generic base class for lazy, single pass
- * inputItr classes in order to simplify the implementation of lazy iterators for mapPartitions use
- * cases. Note [SPARK-3369], which gives the reasons for backwards compatibility with regard to the
- * iterable API despite Spark's single pass nature.
+ * (NOTE: Adapted from Apache SystemML) This class is a generic base class for lazy, single pass inputItr classes in
+ * order to simplify the implementation of lazy iterators for mapPartitions use cases. Note [SPARK-3369], which gives
+ * the reasons for backwards compatibility with regard to the iterable API despite Spark's single pass nature.
  * <p>
- * Provide a way to obtain a inputItr of type O  (output), out of an inputItr of type I (input)
+ * Provide a way to obtain a inputItr of type O (output), out of an inputItr of type I (input)
  * <p>
- * Things to remember: - Assumes Spark calls hasNext() to check for elements, before calling next()
- * to obtain them - Assumes hasNext() gets called atleast once. - Concrete Implementation is
- * responsible for calling inputIterator.next() and doing the processing in computeNext()
+ * Things to remember: - Assumes Spark calls hasNext() to check for elements, before calling next() to obtain them -
+ * Assumes hasNext() gets called atleast once. - Concrete Implementation is responsible for calling inputIterator.next()
+ * and doing the processing in computeNext()
  */
 public abstract class LazyIterableIterator<I, O> implements Iterable<O>, Iterator<O> {
 
-  protected Iterator<I> inputItr = null;
+  protected Iterator<I> inputItr;
   private boolean consumed = false;
   private boolean startCalled = false;
   private boolean endCalled = false;
@@ -44,7 +43,7 @@ public abstract class LazyIterableIterator<I, O> implements Iterable<O>, Iterato
   }
 
   /**
-   * Called once, before any elements are processed
+   * Called once, before any elements are processed.
    */
   protected abstract void start();
 
@@ -52,7 +51,6 @@ public abstract class LazyIterableIterator<I, O> implements Iterable<O>, Iterato
    * Block computation to be overwritten by sub classes.
    */
   protected abstract O computeNext();
-
 
   /**
    * Called once, after all elements are processed.
@@ -88,13 +86,13 @@ public abstract class LazyIterableIterator<I, O> implements Iterable<O>, Iterato
 
   @Override
   public Iterator<O> iterator() {
-    //check for consumed inputItr
+    // check for consumed inputItr
     if (consumed) {
       throw new RuntimeException("Invalid repeated inputItr consumption.");
     }
 
-    //hand out self as inputItr exactly once (note: do not hand out the input
-    //inputItr since it is consumed by the self inputItr implementation)
+    // hand out self as inputItr exactly once (note: do not hand out the input
+    // inputItr since it is consumed by the self inputItr implementation)
     consumed = true;
     return this;
   }

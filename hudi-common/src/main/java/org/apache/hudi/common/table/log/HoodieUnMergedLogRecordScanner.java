@@ -18,20 +18,24 @@
 
 package org.apache.hudi.common.table.log;
 
-import java.util.List;
-import org.apache.avro.Schema;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 
+import org.apache.avro.Schema;
+import org.apache.hadoop.fs.FileSystem;
+
+import java.util.List;
+
+/**
+ * A scanner used to scan hoodie unmerged log records.
+ */
 public class HoodieUnMergedLogRecordScanner extends AbstractHoodieLogRecordScanner {
 
   private final LogRecordScannerCallback callback;
 
-  public HoodieUnMergedLogRecordScanner(FileSystem fs, String basePath,
-      List<String> logFilePaths, Schema readerSchema, String latestInstantTime,
-      boolean readBlocksLazily, boolean reverseReader, int bufferSize,
+  public HoodieUnMergedLogRecordScanner(FileSystem fs, String basePath, List<String> logFilePaths, Schema readerSchema,
+      String latestInstantTime, boolean readBlocksLazily, boolean reverseReader, int bufferSize,
       LogRecordScannerCallback callback) {
     super(fs, basePath, logFilePaths, readerSchema, latestInstantTime, readBlocksLazily, reverseReader, bufferSize);
     this.callback = callback;
@@ -48,6 +52,9 @@ public class HoodieUnMergedLogRecordScanner extends AbstractHoodieLogRecordScann
     throw new IllegalStateException("Not expected to see delete records in this log-scan mode. Check Job Config");
   }
 
+  /**
+   * A callback for log record scanner.
+   */
   @FunctionalInterface
   public static interface LogRecordScannerCallback {
 

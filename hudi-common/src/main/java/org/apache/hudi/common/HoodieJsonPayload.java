@@ -18,22 +18,27 @@
 
 package org.apache.hudi.common;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
-import java.util.zip.InflaterInputStream;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.avro.MercifulJsonConverter;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.util.FileIOUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.IndexedRecord;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
+
+/**
+ * Hoodie json payload.
+ */
 public class HoodieJsonPayload implements HoodieRecordPayload<HoodieJsonPayload> {
 
   private byte[] jsonDataCompressed;
@@ -50,15 +55,14 @@ public class HoodieJsonPayload implements HoodieRecordPayload<HoodieJsonPayload>
   }
 
   @Override
-  public Option<IndexedRecord> combineAndGetUpdateValue(IndexedRecord oldRec, Schema schema)
-      throws IOException {
+  public Option<IndexedRecord> combineAndGetUpdateValue(IndexedRecord oldRec, Schema schema) throws IOException {
     return getInsertValue(schema);
   }
 
   @Override
   public Option<IndexedRecord> getInsertValue(Schema schema) throws IOException {
-    MercifulJsonConverter jsonConverter = new MercifulJsonConverter(schema);
-    return Option.of(jsonConverter.convert(getJsonData()));
+    MercifulJsonConverter jsonConverter = new MercifulJsonConverter();
+    return Option.of(jsonConverter.convert(getJsonData(), schema));
   }
 
   private String getJsonData() throws IOException {
@@ -68,8 +72,7 @@ public class HoodieJsonPayload implements HoodieRecordPayload<HoodieJsonPayload>
   private byte[] compressData(String jsonData) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION);
-    DeflaterOutputStream dos =
-        new DeflaterOutputStream(baos, deflater, true);
+    DeflaterOutputStream dos = new DeflaterOutputStream(baos, deflater, true);
     try {
       dos.write(jsonData.getBytes());
     } finally {
@@ -82,13 +85,9 @@ public class HoodieJsonPayload implements HoodieRecordPayload<HoodieJsonPayload>
     return baos.toByteArray();
   }
 
-
   private String unCompressData(byte[] data) throws IOException {
-    InflaterInputStream iis = new InflaterInputStream(new ByteArrayInputStream(data));
-    try {
+    try (InflaterInputStream iis = new InflaterInputStream(new ByteArrayInputStream(data))) {
       return FileIOUtils.readAsUTFString(iis, dataSize);
-    } finally {
-      iis.close();
     }
   }
 

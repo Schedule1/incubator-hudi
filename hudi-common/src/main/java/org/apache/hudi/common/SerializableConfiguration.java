@@ -18,12 +18,16 @@
 
 package org.apache.hudi.common;
 
+import org.apache.hadoop.conf.Configuration;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import org.apache.hadoop.conf.Configuration;
 
+/**
+ * A wrapped configuration which can be serialized.
+ */
 public class SerializableConfiguration implements Serializable {
 
   private transient Configuration configuration;
@@ -57,8 +61,7 @@ public class SerializableConfiguration implements Serializable {
   @Override
   public String toString() {
     StringBuilder str = new StringBuilder();
-    configuration.iterator().forEachRemaining(e ->
-        str.append(String.format("%s => %s \n", e.getKey(), e.getValue())));
+    configuration.iterator().forEachRemaining(e -> str.append(String.format("%s => %s \n", e.getKey(), e.getValue())));
     return configuration.toString();
   }
 }

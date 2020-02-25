@@ -18,11 +18,30 @@
 
 package org.apache.hudi.utilities.perf;
 
+import org.apache.hudi.common.model.FileSlice;
+import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.SyncableFileSystemView;
+import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
+import org.apache.hudi.common.table.view.FileSystemViewStorageType;
+import org.apache.hudi.common.table.view.RemoteHoodieTableFileSystemView;
+import org.apache.hudi.common.util.FSUtils;
+import org.apache.hudi.common.util.Option;
+import org.apache.hudi.timeline.service.TimelineService;
+import org.apache.hudi.utilities.UtilHelpers;
+
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.UniformReservoir;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -36,27 +55,10 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hudi.common.model.FileSlice;
-import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.common.table.SyncableFileSystemView;
-import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
-import org.apache.hudi.common.table.view.FileSystemViewStorageType;
-import org.apache.hudi.common.table.view.RemoteHoodieTableFileSystemView;
-import org.apache.hudi.common.util.FSUtils;
-import org.apache.hudi.common.util.Option;
-import org.apache.hudi.timeline.service.TimelineService;
-import org.apache.hudi.utilities.UtilHelpers;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaSparkContext;
 
 public class TimelineServerPerf implements Serializable {
 
-  private static volatile Logger logger = LogManager.getLogger(TimelineServerPerf.class);
+  private static final Logger LOG = LogManager.getLogger(TimelineServerPerf.class);
   private final Config cfg;
   private transient TimelineService timelineServer;
   private final boolean useExternalTimelineServer;
@@ -71,10 +73,10 @@ public class TimelineServerPerf implements Serializable {
   private void setHostAddrFromSparkConf(SparkConf sparkConf) {
     String hostAddr = sparkConf.get("spark.driver.host", null);
     if (hostAddr != null) {
-      logger.info("Overriding hostIp to (" + hostAddr + ") found in spark-conf. It was " + this.hostAddr);
+      LOG.info("Overriding hostIp to (" + hostAddr + ") found in spark-conf. It was " + this.hostAddr);
       this.hostAddr = hostAddr;
     } else {
-      logger.warn("Unable to find driver bind address from spark config");
+      LOG.warn("Unable to find driver bind address from spark config");
     }
   }
 
@@ -82,8 +84,8 @@ public class TimelineServerPerf implements Serializable {
 
     List<String> allPartitionPaths = FSUtils.getAllPartitionPaths(timelineServer.getFs(), cfg.basePath, true);
     Collections.shuffle(allPartitionPaths);
-    List<String> selected = allPartitionPaths.stream().filter(p -> !p.contains("error"))
-        .limit(cfg.maxPartitions).collect(Collectors.toList());
+    List<String> selected = allPartitionPaths.stream().filter(p -> !p.contains("error")).limit(cfg.maxPartitions)
+        .collect(Collectors.toList());
     JavaSparkContext jsc = UtilHelpers.buildSparkContext("hudi-view-perf-" + cfg.basePath, cfg.sparkMaster);
     if (!useExternalTimelineServer) {
       this.timelineServer.startService();
@@ -100,21 +102,19 @@ public class TimelineServerPerf implements Serializable {
 
     String dumpPrefix = UUID.randomUUID().toString();
     System.out.println("First Iteration to load all partitions");
-    Dumper d = new Dumper(metaClient.getFs(), new Path(reportDir,
-        String.format("1_%s.csv", dumpPrefix)));
+    Dumper d = new Dumper(metaClient.getFs(), new Path(reportDir, String.format("1_%s.csv", dumpPrefix)));
     d.init();
     d.dump(runLookups(jsc, selected, fsView, 1, 0));
     d.close();
     System.out.println("\n\n\n First Iteration is done");
 
-    Dumper d2 = new Dumper(metaClient.getFs(), new Path(reportDir,
-        String.format("2_%s.csv", dumpPrefix)));
+    Dumper d2 = new Dumper(metaClient.getFs(), new Path(reportDir, String.format("2_%s.csv", dumpPrefix)));
     d2.init();
     d2.dump(runLookups(jsc, selected, fsView, cfg.numIterations, cfg.numCoresPerExecutor));
     d2.close();
 
     System.out.println("\n\n\nDumping all File Slices");
-    selected.stream().forEach(p -> fsView.getAllFileSlices(p).forEach(s -> System.out.println("\tMyFileSlice=" + s)));
+    selected.forEach(p -> fsView.getAllFileSlices(p).forEach(s -> System.out.println("\tMyFileSlice=" + s)));
 
     // Waiting for curl queries
     if (!useExternalTimelineServer && cfg.waitForManualQueries) {
@@ -131,17 +131,16 @@ public class TimelineServerPerf implements Serializable {
 
   public List<PerfStats> runLookups(JavaSparkContext jsc, List<String> partitionPaths, SyncableFileSystemView fsView,
       int numIterations, int concurrency) {
-    List<PerfStats> perfStats = jsc.parallelize(partitionPaths, cfg.numExecutors).flatMap(p -> {
+    return jsc.parallelize(partitionPaths, cfg.numExecutors).flatMap(p -> {
       ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(100);
       final List<PerfStats> result = new ArrayList<>();
       final List<ScheduledFuture<PerfStats>> futures = new ArrayList<>();
       List<FileSlice> slices = fsView.getLatestFileSlices(p).collect(Collectors.toList());
       String fileId = slices.isEmpty() ? "dummyId"
           : slices.get(new Random(Double.doubleToLongBits(Math.random())).nextInt(slices.size())).getFileId();
-      IntStream.range(0, concurrency).forEach(i -> {
-        futures.add(executor.schedule(() -> runOneRound(fsView, p, fileId, i, numIterations), 0, TimeUnit.NANOSECONDS));
-      });
-      futures.stream().forEach(x -> {
+      IntStream.range(0, concurrency).forEach(i -> futures.add(executor.schedule(() -> runOneRound(fsView, p, fileId,
+              i, numIterations), 0, TimeUnit.NANOSECONDS)));
+      futures.forEach(x -> {
         try {
           result.add(x.get());
         } catch (InterruptedException | ExecutionException e) {
@@ -149,12 +148,9 @@ public class TimelineServerPerf implements Serializable {
         }
       });
       System.out.println("SLICES are=");
-      slices.stream().forEach(s -> {
-        System.out.println("\t\tFileSlice=" + s);
-      });
+      slices.forEach(s -> System.out.println("\t\tFileSlice=" + s));
       return result.iterator();
     }).collect();
-    return perfStats;
   }
 
   private static PerfStats runOneRound(SyncableFileSystemView fsView, String partition, String fileId, int id,
@@ -164,8 +160,8 @@ public class TimelineServerPerf implements Serializable {
       long beginTs = System.currentTimeMillis();
       Option<FileSlice> c = fsView.getLatestFileSlice(partition, fileId);
       long endTs = System.currentTimeMillis();
-      System.out.println("Latest File Slice for part=" + partition + ", fileId="
-          + fileId + ", Slice=" + c + ", Time=" + (endTs - beginTs));
+      System.out.println("Latest File Slice for part=" + partition + ", fileId=" + fileId + ", Slice=" + c + ", Time="
+          + (endTs - beginTs));
       latencyHistogram.update(endTs - beginTs);
     }
     return new PerfStats(partition, id, latencyHistogram.getSnapshot());
@@ -194,7 +190,7 @@ public class TimelineServerPerf implements Serializable {
     }
 
     public void dump(List<PerfStats> stats) {
-      stats.stream().forEach(x -> {
+      stats.forEach(x -> {
         String row = String.format("%s,%d,%d,%d,%f,%f,%f,%f\n", x.partition, x.id, x.minTime, x.maxTime, x.meanTime,
             x.medianTime, x.p75, x.p95);
         System.out.println(row);
@@ -210,7 +206,6 @@ public class TimelineServerPerf implements Serializable {
       outputStream.close();
     }
   }
-
 
   private static class PerfStats implements Serializable {
 
@@ -261,7 +256,7 @@ public class TimelineServerPerf implements Serializable {
     @Parameter(names = {"--num-iterations", "-i"}, description = "Number of iterations for each partitions")
     public Integer numIterations = 10;
 
-    @Parameter(names = {"--spark-master", "-ms"}, description = "Spark master", required = false)
+    @Parameter(names = {"--spark-master", "-ms"}, description = "Spark master")
     public String sparkMaster = "local[2]";
 
     @Parameter(names = {"--server-port", "-p"}, description = " Server Port")
@@ -288,8 +283,7 @@ public class TimelineServerPerf implements Serializable {
         description = "Directory where spilled view entries will be stored. Used for SPILLABLE_DISK storage type")
     public String baseStorePathForFileGroups = FileSystemViewStorageConfig.DEFAULT_VIEW_SPILLABLE_DIR;
 
-    @Parameter(names = {"--rocksdb-path", "-rp"},
-        description = "Root directory for RocksDB")
+    @Parameter(names = {"--rocksdb-path", "-rp"}, description = "Root directory for RocksDB")
     public String rocksDBPath = FileSystemViewStorageConfig.DEFAULT_ROCKSDB_BASE_PATH;
 
     @Parameter(names = {"--wait-for-manual-queries", "-ww"})
@@ -312,7 +306,7 @@ public class TimelineServerPerf implements Serializable {
 
   public static void main(String[] args) throws Exception {
     final Config cfg = new Config();
-    JCommander cmd = new JCommander(cfg, args);
+    JCommander cmd = new JCommander(cfg, null, args);
     if (cfg.help || args.length == 0) {
       cmd.usage();
       System.exit(1);

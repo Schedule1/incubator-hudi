@@ -18,42 +18,45 @@
 
 package org.apache.hudi.index;
 
-import static org.junit.Assert.assertTrue;
-
 import org.apache.hudi.HoodieClientTestHarness;
 import org.apache.hudi.config.HoodieHBaseIndexConfig;
 import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.index.HoodieIndex.IndexType;
 import org.apache.hudi.index.bloom.HoodieBloomIndex;
+import org.apache.hudi.index.bloom.HoodieGlobalBloomIndex;
 import org.apache.hudi.index.hbase.HBaseIndex;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
 
 public class TestHoodieIndex extends HoodieClientTestHarness {
 
   @Before
   public void setUp() throws Exception {
     initSparkContexts("TestHoodieIndex");
-    initTempFolderAndPath();
-    initTableType();
+    initPath();
+    initMetaClient();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     cleanupSparkContexts();
-    cleanupTempFolderAndPath();
-    cleanupTableType();
+    cleanupMetaClient();
   }
 
   @Test
-  public void testCreateIndex() throws Exception {
+  public void testCreateIndex() {
     HoodieWriteConfig.Builder clientConfigBuilder = HoodieWriteConfig.newBuilder();
     HoodieIndexConfig.Builder indexConfigBuilder = HoodieIndexConfig.newBuilder();
     // Different types
-    HoodieWriteConfig config = clientConfigBuilder.withPath(basePath).withIndexConfig(
-        indexConfigBuilder.withIndexType(HoodieIndex.IndexType.HBASE)
-            .withHBaseIndexConfig(new HoodieHBaseIndexConfig.Builder().build()).build()).build();
+    HoodieWriteConfig config = clientConfigBuilder.withPath(basePath)
+        .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.HBASE)
+            .withHBaseIndexConfig(new HoodieHBaseIndexConfig.Builder().build()).build())
+        .build();
     assertTrue(HoodieIndex.createIndex(config, jsc) instanceof HBaseIndex);
     config = clientConfigBuilder.withPath(basePath)
         .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.INMEMORY).build()).build();
@@ -61,5 +64,8 @@ public class TestHoodieIndex extends HoodieClientTestHarness {
     config = clientConfigBuilder.withPath(basePath)
         .withIndexConfig(indexConfigBuilder.withIndexType(HoodieIndex.IndexType.BLOOM).build()).build();
     assertTrue(HoodieIndex.createIndex(config, jsc) instanceof HoodieBloomIndex);
+    config = clientConfigBuilder.withPath(basePath)
+        .withIndexConfig(indexConfigBuilder.withIndexType(IndexType.GLOBAL_BLOOM).build()).build();
+    assertTrue(HoodieIndex.createIndex(config, jsc) instanceof HoodieGlobalBloomIndex);
   }
 }

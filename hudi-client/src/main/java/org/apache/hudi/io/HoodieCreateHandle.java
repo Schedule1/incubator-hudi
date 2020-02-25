@@ -18,11 +18,6 @@
 
 package org.apache.hudi.io;
 
-import java.io.IOException;
-import java.util.Iterator;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.HoodiePartitionMetadata;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -37,13 +32,20 @@ import org.apache.hudi.exception.HoodieInsertException;
 import org.apache.hudi.io.storage.HoodieStorageWriter;
 import org.apache.hudi.io.storage.HoodieStorageWriterFactory;
 import org.apache.hudi.table.HoodieTable;
+
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.TaskContext;
 
+import java.io.IOException;
+import java.util.Iterator;
+
 public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWriteHandle<T> {
 
-  private static Logger logger = LogManager.getLogger(HoodieCreateHandle.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieCreateHandle.class);
 
   private final HoodieStorageWriter<IndexedRecord> storageWriter;
   private final Path path;
@@ -66,17 +68,16 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
           new Path(config.getBasePath()), FSUtils.getPartitionPath(config.getBasePath(), partitionPath));
       partitionMetadata.trySave(TaskContext.getPartitionId());
       createMarkerFile(partitionPath);
-      this.storageWriter = HoodieStorageWriterFactory
-          .getStorageWriter(commitTime, path, hoodieTable, config, writerSchema);
+      this.storageWriter =
+          HoodieStorageWriterFactory.getStorageWriter(commitTime, path, hoodieTable, config, writerSchema);
     } catch (IOException e) {
-      throw new HoodieInsertException(
-          "Failed to initialize HoodieStorageWriter for path " + path, e);
+      throw new HoodieInsertException("Failed to initialize HoodieStorageWriter for path " + path, e);
     }
-    logger.info("New CreateHandle for partition :" + partitionPath + " with fileId " + fileId);
+    LOG.info("New CreateHandle for partition :" + partitionPath + " with fileId " + fileId);
   }
 
   /**
-   * Called by the compactor code path
+   * Called by the compactor code path.
    */
   public HoodieCreateHandle(HoodieWriteConfig config, String commitTime, HoodieTable<T> hoodieTable,
       String partitionPath, String fileId, Iterator<HoodieRecord<T>> recordIterator) {
@@ -93,6 +94,7 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
   /**
    * Perform the actual writing of the given record into the backing file.
    */
+  @Override
   public void write(HoodieRecord record, Option<IndexedRecord> avroRecord) {
     Option recordMetadata = record.getData().getMetadata();
     try {
@@ -101,7 +103,9 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
         IndexedRecord recordWithMetadataInSchema = rewriteRecord((GenericRecord) avroRecord.get());
         storageWriter.writeAvroWithMetadata(recordWithMetadataInSchema, record);
         // update the new location of record, so we know where to find it next
+        record.unseal();
         record.setNewLocation(new HoodieRecordLocation(instantTime, writeStatus.getFileId()));
+        record.seal();
         recordsWritten++;
         insertRecordsWritten++;
       } else {
@@ -116,12 +120,12 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
       // Not throwing exception from here, since we don't want to fail the entire job
       // for a single record
       writeStatus.markFailure(record, t, recordMetadata);
-      logger.error("Error writing record " + record, t);
+      LOG.error("Error writing record " + record, t);
     }
   }
 
   /**
-   * Writes all records passed
+   * Writes all records passed.
    */
   public void write() {
     try {
@@ -134,8 +138,7 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
         }
       }
     } catch (IOException io) {
-      throw new HoodieInsertException(
-          "Failed to insert records for path " + path, io);
+      throw new HoodieInsertException("Failed to insert records for path " + path, io);
     }
   }
 
@@ -145,12 +148,12 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
   }
 
   /**
-   * Performs actions to durably, persist the current changes and returns a WriteStatus object
+   * Performs actions to durably, persist the current changes and returns a WriteStatus object.
    */
   @Override
   public WriteStatus close() {
-    logger.info("Closing the file " + writeStatus.getFileId() + " as we are done with all the records "
-        + recordsWritten);
+    LOG
+        .info("Closing the file " + writeStatus.getFileId() + " as we are done with all the records " + recordsWritten);
     try {
 
       storageWriter.close();
@@ -172,8 +175,8 @@ public class HoodieCreateHandle<T extends HoodieRecordPayload> extends HoodieWri
       stat.setRuntimeStats(runtimeStats);
       writeStatus.setStat(stat);
 
-      logger.info(String.format("CreateHandle for partitionPath %s fileID %s, took %d ms.",
-          stat.getPartitionPath(), stat.getFileId(), runtimeStats.getTotalCreateTime()));
+      LOG.info(String.format("CreateHandle for partitionPath %s fileID %s, took %d ms.", stat.getPartitionPath(),
+          stat.getFileId(), runtimeStats.getTotalCreateTime()));
 
       return writeStatus;
     } catch (IOException e) {

@@ -18,37 +18,28 @@
 
 package org.apache.hudi.common.util;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieFileGroup;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Helper class to generate Key and column names for rocksdb based view
  *
- * For RocksDB, 3 colFamilies are used for storing file-system view for each dataset.
- *   (a) View
- *   (b) Partitions Cached
- *   (c) Pending Compactions
- *
- *
- * View : Key : Store both slice and Data file stored.
- *     Slice :
- *         Key   = "type=slice,part=<PartitionPath>,id=<FileId>,instant=<Timestamp>"
- *         Value = Serialized FileSlice
- *     Data File :
- *         Key   = "type=df,part=<PartitionPath>,id=<FileId>,instant=<Timestamp>"
- *         Value =  Serialized DataFile
- *
- * Partitions :
- *       Key  = "part=<PartitionPath>"
- *       Value = Boolean
- *
+ * For RocksDB, 3 colFamilies are used for storing file-system view for each table. (a) View (b) Partitions Cached (c)
  * Pending Compactions
- *       Key = "part=<PartitionPath>,id=<FileId>"
- *       Value = Pair<CompactionTime, CompactionOperation>
+ *
+ *
+ * View : Key : Store both slice and Data file stored. Slice : Key =
+ * "type=slice,part=<PartitionPath>,id=<FileId>,instant=<Timestamp>" Value = Serialized FileSlice Data File : Key =
+ * "type=df,part=<PartitionPath>,id=<FileId>,instant=<Timestamp>" Value = Serialized DataFile
+ *
+ * Partitions : Key = "part=<PartitionPath>" Value = Boolean
+ *
+ * Pending Compactions Key = "part=<PartitionPath>,id=<FileId>" Value = Pair<CompactionTime, CompactionOperation>
  */
 public class RocksDBSchemaHelper {
 
@@ -80,15 +71,15 @@ public class RocksDBSchemaHelper {
   }
 
   public String getKeyForSliceView(String partitionPath, String fileId, String instantTime) {
-    return String.format("type=slice,part=%s,id=%s,instant=%s",partitionPath, fileId, instantTime);
+    return String.format("type=slice,part=%s,id=%s,instant=%s", partitionPath, fileId, instantTime);
   }
 
   public String getPrefixForSliceViewByPartitionFile(String partitionPath, String fileId) {
-    return String.format("type=slice,part=%s,id=%s,instant=",partitionPath, fileId);
+    return String.format("type=slice,part=%s,id=%s,instant=", partitionPath, fileId);
   }
 
   public String getPrefixForDataFileViewByPartitionFile(String partitionPath, String fileId) {
-    return String.format("type=df,part=%s,id=%s,instant=",partitionPath, fileId);
+    return String.format("type=df,part=%s,id=%s,instant=", partitionPath, fileId);
   }
 
   public String getKeyForDataFileView(HoodieFileGroup fileGroup, FileSlice slice) {

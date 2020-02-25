@@ -18,14 +18,15 @@
 
 package org.apache.hudi.config;
 
+import javax.annotation.concurrent.Immutable;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Properties;
-import javax.annotation.concurrent.Immutable;
 
 /**
- * Storage related config
+ * Storage related config.
  */
 @Immutable
 public class HoodieStorageConfig extends DefaultHoodieConfig {
@@ -38,8 +39,7 @@ public class HoodieStorageConfig extends DefaultHoodieConfig {
   public static final String DEFAULT_PARQUET_PAGE_SIZE_BYTES = String.valueOf(1 * 1024 * 1024);
   // used to size log files
   public static final String LOGFILE_SIZE_MAX_BYTES = "hoodie.logfile.max.size";
-  public static final String DEFAULT_LOGFILE_SIZE_MAX_BYTES = String
-      .valueOf(1024 * 1024 * 1024); // 1 GB
+  public static final String DEFAULT_LOGFILE_SIZE_MAX_BYTES = String.valueOf(1024 * 1024 * 1024); // 1 GB
   // used to size data blocks in log file
   public static final String LOGFILE_DATA_BLOCK_SIZE_MAX_BYTES = "hoodie.logfile.data.block.max.size";
   public static final String DEFAULT_LOGFILE_DATA_BLOCK_SIZE_MAX_BYTES = String.valueOf(256 * 1024 * 1024); // 256 MB
@@ -66,12 +66,9 @@ public class HoodieStorageConfig extends DefaultHoodieConfig {
     private final Properties props = new Properties();
 
     public Builder fromFile(File propertiesFile) throws IOException {
-      FileReader reader = new FileReader(propertiesFile);
-      try {
+      try (FileReader reader = new FileReader(propertiesFile)) {
         this.props.load(reader);
         return this;
-      } finally {
-        reader.close();
       }
     }
 
@@ -122,20 +119,20 @@ public class HoodieStorageConfig extends DefaultHoodieConfig {
 
     public HoodieStorageConfig build() {
       HoodieStorageConfig config = new HoodieStorageConfig(props);
-      setDefaultOnCondition(props, !props.containsKey(PARQUET_FILE_MAX_BYTES),
-          PARQUET_FILE_MAX_BYTES, DEFAULT_PARQUET_FILE_MAX_BYTES);
-      setDefaultOnCondition(props, !props.containsKey(PARQUET_BLOCK_SIZE_BYTES),
-          PARQUET_BLOCK_SIZE_BYTES, DEFAULT_PARQUET_BLOCK_SIZE_BYTES);
-      setDefaultOnCondition(props, !props.containsKey(PARQUET_PAGE_SIZE_BYTES),
-          PARQUET_PAGE_SIZE_BYTES, DEFAULT_PARQUET_PAGE_SIZE_BYTES);
+      setDefaultOnCondition(props, !props.containsKey(PARQUET_FILE_MAX_BYTES), PARQUET_FILE_MAX_BYTES,
+          DEFAULT_PARQUET_FILE_MAX_BYTES);
+      setDefaultOnCondition(props, !props.containsKey(PARQUET_BLOCK_SIZE_BYTES), PARQUET_BLOCK_SIZE_BYTES,
+          DEFAULT_PARQUET_BLOCK_SIZE_BYTES);
+      setDefaultOnCondition(props, !props.containsKey(PARQUET_PAGE_SIZE_BYTES), PARQUET_PAGE_SIZE_BYTES,
+          DEFAULT_PARQUET_PAGE_SIZE_BYTES);
       setDefaultOnCondition(props, !props.containsKey(LOGFILE_DATA_BLOCK_SIZE_MAX_BYTES),
           LOGFILE_DATA_BLOCK_SIZE_MAX_BYTES, DEFAULT_LOGFILE_DATA_BLOCK_SIZE_MAX_BYTES);
-      setDefaultOnCondition(props, !props.containsKey(LOGFILE_SIZE_MAX_BYTES),
-          LOGFILE_SIZE_MAX_BYTES, DEFAULT_LOGFILE_SIZE_MAX_BYTES);
-      setDefaultOnCondition(props, !props.containsKey(PARQUET_COMPRESSION_RATIO),
-          PARQUET_COMPRESSION_RATIO, DEFAULT_STREAM_COMPRESSION_RATIO);
-      setDefaultOnCondition(props, !props.containsKey(PARQUET_COMPRESSION_CODEC),
-          PARQUET_COMPRESSION_CODEC, DEFAULT_PARQUET_COMPRESSION_CODEC);
+      setDefaultOnCondition(props, !props.containsKey(LOGFILE_SIZE_MAX_BYTES), LOGFILE_SIZE_MAX_BYTES,
+          DEFAULT_LOGFILE_SIZE_MAX_BYTES);
+      setDefaultOnCondition(props, !props.containsKey(PARQUET_COMPRESSION_RATIO), PARQUET_COMPRESSION_RATIO,
+          DEFAULT_STREAM_COMPRESSION_RATIO);
+      setDefaultOnCondition(props, !props.containsKey(PARQUET_COMPRESSION_CODEC), PARQUET_COMPRESSION_CODEC,
+          DEFAULT_PARQUET_COMPRESSION_CODEC);
       setDefaultOnCondition(props, !props.containsKey(LOGFILE_TO_PARQUET_COMPRESSION_RATIO),
           LOGFILE_TO_PARQUET_COMPRESSION_RATIO, DEFAULT_LOGFILE_TO_PARQUET_COMPRESSION_RATIO);
       return config;

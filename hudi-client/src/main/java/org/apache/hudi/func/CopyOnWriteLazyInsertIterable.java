@@ -18,12 +18,6 @@
 
 package org.apache.hudi.func;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.function.Function;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
@@ -36,12 +30,19 @@ import org.apache.hudi.io.HoodieCreateHandle;
 import org.apache.hudi.io.HoodieWriteHandle;
 import org.apache.hudi.table.HoodieTable;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.IndexedRecord;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
+
 /**
- * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new
- * files.
+ * Lazy Iterable, that writes a stream of HoodieRecords sorted by the partitionPath, into new files.
  */
-public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload> extends
-    LazyIterableIterator<HoodieRecord<T>, List<WriteStatus>> {
+public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload>
+    extends LazyIterableIterator<HoodieRecord<T>, List<WriteStatus>> {
 
   protected final HoodieWriteConfig hoodieConfig;
   protected final String commitTime;
@@ -80,25 +81,23 @@ public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload> extend
    * Transformer function to help transform a HoodieRecord. This transformer is used by BufferedIterator to offload some
    * expensive operations of transformation to the reader thread.
    */
-  static <T extends HoodieRecordPayload> Function<HoodieRecord<T>,
-      HoodieInsertValueGenResult<HoodieRecord>> getTransformFunction(Schema schema) {
+  static <T extends HoodieRecordPayload> Function<HoodieRecord<T>, HoodieInsertValueGenResult<HoodieRecord>> getTransformFunction(
+      Schema schema) {
     return hoodieRecord -> new HoodieInsertValueGenResult(hoodieRecord, schema);
   }
 
   @Override
-  protected void start() {
-  }
+  protected void start() {}
 
   @Override
   protected List<WriteStatus> computeNext() {
     // Executor service used for launching writer thread.
-    BoundedInMemoryExecutor<HoodieRecord<T>,
-            HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> bufferedIteratorExecutor = null;
+    BoundedInMemoryExecutor<HoodieRecord<T>, HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> bufferedIteratorExecutor =
+        null;
     try {
       final Schema schema = new Schema.Parser().parse(hoodieConfig.getSchema());
       bufferedIteratorExecutor =
-          new SparkBoundedInMemoryExecutor<>(hoodieConfig, inputItr,
-              getInsertHandler(), getTransformFunction(schema));
+          new SparkBoundedInMemoryExecutor<>(hoodieConfig, inputItr, getInsertHandler(), getTransformFunction(schema));
       final List<WriteStatus> result = bufferedIteratorExecutor.execute();
       assert result != null && !result.isEmpty() && !bufferedIteratorExecutor.isRemaining();
       return result;
@@ -112,8 +111,7 @@ public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload> extend
   }
 
   @Override
-  protected void end() {
-  }
+  protected void end() {}
 
   protected String getNextFileId(String idPfx) {
     return String.format("%s-%d", idPfx, numFilesWritten++);
@@ -124,11 +122,10 @@ public class CopyOnWriteLazyInsertIterable<T extends HoodieRecordPayload> extend
   }
 
   /**
-   * Consumes stream of hoodie records from in-memory queue and
-   * writes to one or more create-handles
+   * Consumes stream of hoodie records from in-memory queue and writes to one or more create-handles.
    */
-  protected class CopyOnWriteInsertHandler extends
-      BoundedInMemoryQueueConsumer<HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> {
+  protected class CopyOnWriteInsertHandler
+      extends BoundedInMemoryQueueConsumer<HoodieInsertValueGenResult<HoodieRecord>, List<WriteStatus>> {
 
     protected final List<WriteStatus> statuses = new ArrayList<>();
     protected HoodieWriteHandle handle;

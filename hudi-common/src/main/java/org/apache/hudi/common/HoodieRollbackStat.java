@@ -18,14 +18,15 @@
 
 package org.apache.hudi.common;
 
+import org.apache.hadoop.fs.FileStatus;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.hadoop.fs.FileStatus;
 
 /**
- * Collects stats about a single partition clean operation
+ * Collects stats about a single partition clean operation.
  */
 public class HoodieRollbackStat implements Serializable {
 
@@ -37,8 +38,8 @@ public class HoodieRollbackStat implements Serializable {
   // Count of HoodieLogFile to commandBlocks written for a particular rollback
   private final Map<FileStatus, Long> commandBlocksCount;
 
-  public HoodieRollbackStat(String partitionPath, List<String> successDeleteFiles,
-      List<String> failedDeleteFiles, Map<FileStatus, Long> commandBlocksCount) {
+  public HoodieRollbackStat(String partitionPath, List<String> successDeleteFiles, List<String> failedDeleteFiles,
+      Map<FileStatus, Long> commandBlocksCount) {
     this.partitionPath = partitionPath;
     this.successDeleteFiles = successDeleteFiles;
     this.failedDeleteFiles = failedDeleteFiles;
@@ -65,6 +66,9 @@ public class HoodieRollbackStat implements Serializable {
     return new Builder();
   }
 
+  /**
+   * A builder used to build {@link HoodieRollbackStat}.
+   */
   public static class Builder {
 
     private List<String> successDeleteFiles;
@@ -73,7 +77,7 @@ public class HoodieRollbackStat implements Serializable {
     private String partitionPath;
 
     public Builder withDeletedFileResults(Map<FileStatus, Boolean> deletedFiles) {
-      //noinspection Convert2MethodRef
+      // noinspection Convert2MethodRef
       successDeleteFiles = deletedFiles.entrySet().stream().filter(s -> s.getValue())
           .map(s -> s.getKey().getPath().toString()).collect(Collectors.toList());
       failedDeleteFiles = deletedFiles.entrySet().stream().filter(s -> !s.getValue())
@@ -92,8 +96,7 @@ public class HoodieRollbackStat implements Serializable {
     }
 
     public HoodieRollbackStat build() {
-      return new HoodieRollbackStat(partitionPath, successDeleteFiles, failedDeleteFiles,
-          commandBlocksCount);
+      return new HoodieRollbackStat(partitionPath, successDeleteFiles, failedDeleteFiles, commandBlocksCount);
     }
   }
 }

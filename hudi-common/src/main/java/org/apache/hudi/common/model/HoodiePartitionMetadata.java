@@ -18,18 +18,20 @@
 
 package org.apache.hudi.common.model;
 
-import java.io.IOException;
-import java.util.Properties;
+import org.apache.hudi.exception.HoodieException;
+
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hudi.exception.HoodieException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
+import java.util.Properties;
+
 /**
- * The metadata that goes into the meta file in each partition
+ * The metadata that goes into the meta file in each partition.
  */
 public class HoodiePartitionMetadata {
 
@@ -38,22 +40,21 @@ public class HoodiePartitionMetadata {
   public static final String COMMIT_TIME_KEY = "commitTime";
 
   /**
-   * Contents of the metadata
+   * Contents of the metadata.
    */
   private final Properties props;
 
   /**
-   * Path to the partition, about which we have the metadata
+   * Path to the partition, about which we have the metadata.
    */
   private final Path partitionPath;
 
   private final FileSystem fs;
 
-  private static Logger log = LogManager.getLogger(HoodiePartitionMetadata.class);
-
+  private static final Logger LOG = LogManager.getLogger(HoodiePartitionMetadata.class);
 
   /**
-   * Construct metadata from existing partition
+   * Construct metadata from existing partition.
    */
   public HoodiePartitionMetadata(FileSystem fs, Path partitionPath) {
     this.fs = fs;
@@ -64,12 +65,10 @@ public class HoodiePartitionMetadata {
   /**
    * Construct metadata object to be written out.
    */
-  public HoodiePartitionMetadata(FileSystem fs, String commitTime, Path basePath,
-      Path partitionPath) {
+  public HoodiePartitionMetadata(FileSystem fs, String commitTime, Path basePath, Path partitionPath) {
     this(fs, partitionPath);
     props.setProperty(COMMIT_TIME_KEY, commitTime);
-    props
-        .setProperty(PARTITION_DEPTH_KEY, String.valueOf(partitionPath.depth() - basePath.depth()));
+    props.setProperty(PARTITION_DEPTH_KEY, String.valueOf(partitionPath.depth() - basePath.depth()));
   }
 
   public int getPartitionDepth() {
@@ -83,8 +82,8 @@ public class HoodiePartitionMetadata {
    * Write the metadata safely into partition atomically.
    */
   public void trySave(int taskPartitionId) {
-    Path tmpMetaPath = new Path(partitionPath,
-        HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE + "_" + taskPartitionId);
+    Path tmpMetaPath =
+        new Path(partitionPath, HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE + "_" + taskPartitionId);
     Path metaPath = new Path(partitionPath, HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE);
     boolean metafileExists = false;
 
@@ -102,9 +101,8 @@ public class HoodiePartitionMetadata {
         fs.rename(tmpMetaPath, metaPath);
       }
     } catch (IOException ioe) {
-      log.warn(
-          "Error trying to save partition metadata (this is okay, as long as "
-              + "atleast 1 of these succced), " + partitionPath, ioe);
+      LOG.warn("Error trying to save partition metadata (this is okay, as long as atleast 1 of these succced), "
+          + partitionPath, ioe);
     } finally {
       if (!metafileExists) {
         try {
@@ -113,14 +111,14 @@ public class HoodiePartitionMetadata {
             fs.delete(tmpMetaPath, false);
           }
         } catch (IOException ioe) {
-          log.warn("Error trying to clean up temporary files for " + partitionPath, ioe);
+          LOG.warn("Error trying to clean up temporary files for " + partitionPath, ioe);
         }
       }
     }
   }
 
   /**
-   * Read out the metadata for this partition
+   * Read out the metadata for this partition.
    */
   public void readFromFS() throws IOException {
     FSDataInputStream is = null;
@@ -129,8 +127,7 @@ public class HoodiePartitionMetadata {
       is = fs.open(metaFile);
       props.load(is);
     } catch (IOException ioe) {
-      throw new HoodieException("Error reading Hoodie partition metadata for " + partitionPath,
-          ioe);
+      throw new HoodieException("Error reading Hoodie partition metadata for " + partitionPath, ioe);
     } finally {
       if (is != null) {
         is.close();
@@ -143,8 +140,7 @@ public class HoodiePartitionMetadata {
     try {
       return fs.exists(new Path(partitionPath, HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE));
     } catch (IOException ioe) {
-      throw new HoodieException("Error checking Hoodie partition metadata for " + partitionPath,
-          ioe);
+      throw new HoodieException("Error checking Hoodie partition metadata for " + partitionPath, ioe);
     }
   }
 }

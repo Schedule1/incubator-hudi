@@ -18,11 +18,11 @@
 
 package org.apache.hudi.metrics;
 
-import com.codahale.metrics.Timer;
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.table.HoodieTimeline;
 import org.apache.hudi.config.HoodieWriteConfig;
+
+import com.codahale.metrics.Timer;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -31,7 +31,7 @@ import org.apache.log4j.Logger;
  */
 public class HoodieMetrics {
 
-  private static Logger logger = LogManager.getLogger(HoodieMetrics.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieMetrics.class);
   // Some timers
   public String rollbackTimerName = null;
   public String cleanTimerName = null;
@@ -40,8 +40,8 @@ public class HoodieMetrics {
   public String finalizeTimerName = null;
   public String compactionTimerName = null;
   public String indexTimerName = null;
-  private HoodieWriteConfig config = null;
-  private String tableName = null;
+  private HoodieWriteConfig config;
+  private String tableName;
   private Timer rollbackTimer = null;
   private Timer cleanTimer = null;
   private Timer commitTimer = null;
@@ -118,8 +118,8 @@ public class HoodieMetrics {
     return indexTimer == null ? null : indexTimer.time();
   }
 
-  public void updateCommitMetrics(long commitEpochTimeInMs, long durationInMs,
-      HoodieCommitMetadata metadata, String actionType) {
+  public void updateCommitMetrics(long commitEpochTimeInMs, long durationInMs, HoodieCommitMetadata metadata,
+      String actionType) {
     if (config.isMetricsOn()) {
       long totalPartitionsWritten = metadata.fetchTotalPartitionsWritten();
       long totalFilesInsert = metadata.fetchTotalFilesInsert();
@@ -154,9 +154,8 @@ public class HoodieMetrics {
 
   public void updateRollbackMetrics(long durationInMs, long numFilesDeleted) {
     if (config.isMetricsOn()) {
-      logger.info(String
-          .format("Sending rollback metrics (duration=%d, numFilesDeleted=%d)", durationInMs,
-              numFilesDeleted));
+      LOG.info(
+          String.format("Sending rollback metrics (duration=%d, numFilesDeleted=%d)", durationInMs, numFilesDeleted));
       Metrics.registerGauge(getMetricsName("rollback", "duration"), durationInMs);
       Metrics.registerGauge(getMetricsName("rollback", "numFilesDeleted"), numFilesDeleted);
     }
@@ -164,9 +163,8 @@ public class HoodieMetrics {
 
   public void updateCleanMetrics(long durationInMs, int numFilesDeleted) {
     if (config.isMetricsOn()) {
-      logger.info(String
-          .format("Sending clean metrics (duration=%d, numFilesDeleted=%d)", durationInMs,
-              numFilesDeleted));
+      LOG.info(
+          String.format("Sending clean metrics (duration=%d, numFilesDeleted=%d)", durationInMs, numFilesDeleted));
       Metrics.registerGauge(getMetricsName("clean", "duration"), durationInMs);
       Metrics.registerGauge(getMetricsName("clean", "numFilesDeleted"), numFilesDeleted);
     }
@@ -174,24 +172,20 @@ public class HoodieMetrics {
 
   public void updateFinalizeWriteMetrics(long durationInMs, long numFilesFinalized) {
     if (config.isMetricsOn()) {
-      logger.info(String
-          .format("Sending finalize write metrics (duration=%d, numFilesFinalized=%d)",
-              durationInMs, numFilesFinalized));
+      LOG.info(String.format("Sending finalize write metrics (duration=%d, numFilesFinalized=%d)", durationInMs,
+          numFilesFinalized));
       Metrics.registerGauge(getMetricsName("finalize", "duration"), durationInMs);
       Metrics.registerGauge(getMetricsName("finalize", "numFilesFinalized"), numFilesFinalized);
     }
   }
 
-  public void updateIndexMetrics(final String action,final long durationInMs) {
+  public void updateIndexMetrics(final String action, final long durationInMs) {
     if (config.isMetricsOn()) {
-      logger.info(String
-          .format("Sending index metrics (%s.duration, %d)",action, durationInMs));
-      Metrics.registerGauge(getMetricsName("index", String.format("%s.duration", action)),
-          durationInMs);
+      LOG.info(String.format("Sending index metrics (%s.duration, %d)", action, durationInMs));
+      Metrics.registerGauge(getMetricsName("index", String.format("%s.duration", action)), durationInMs);
     }
   }
 
-  @VisibleForTesting
   String getMetricsName(String action, String metric) {
     return config == null ? null : String.format("%s.%s.%s", tableName, action, metric);
   }

@@ -23,6 +23,7 @@ import org.apache.hudi.common.util.TypedProperties;
 import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.utilities.schema.RowBasedSchemaProvider;
 import org.apache.hudi.utilities.schema.SchemaProvider;
+
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -30,15 +31,12 @@ import org.apache.spark.sql.SparkSession;
 
 public abstract class RowSource extends Source<Dataset<Row>> {
 
-  public RowSource(TypedProperties props,
-      JavaSparkContext sparkContext,
-      SparkSession sparkSession,
+  public RowSource(TypedProperties props, JavaSparkContext sparkContext, SparkSession sparkSession,
       SchemaProvider schemaProvider) {
     super(props, sparkContext, sparkSession, schemaProvider, SourceType.ROW);
   }
 
-  protected abstract Pair<Option<Dataset<Row>>, String> fetchNextBatch(Option<String> lastCkptStr,
-      long sourceLimit);
+  protected abstract Pair<Option<Dataset<Row>>, String> fetchNextBatch(Option<String> lastCkptStr, long sourceLimit);
 
   @Override
   protected final InputBatch<Dataset<Row>> fetchNewData(Option<String> lastCkptStr, long sourceLimit) {

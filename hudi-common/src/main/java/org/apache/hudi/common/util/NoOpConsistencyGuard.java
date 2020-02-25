@@ -18,8 +18,9 @@
 
 package org.apache.hudi.common.util;
 
-import java.util.List;
 import org.apache.hadoop.fs.Path;
+
+import java.util.List;
 
 /**
  * Default Consistency guard that does nothing. Used for HDFS deployments
@@ -27,12 +28,10 @@ import org.apache.hadoop.fs.Path;
 public class NoOpConsistencyGuard implements ConsistencyGuard {
 
   @Override
-  public void waitTillFileAppears(Path filePath) {
-  }
+  public void waitTillFileAppears(Path filePath) {}
 
   @Override
-  public void waitTillFileDisappears(Path filePath) {
-  }
+  public void waitTillFileDisappears(Path filePath) {}
 
   @Override
   public void waitTillAllFilesAppear(String dirPath, List<String> files) {

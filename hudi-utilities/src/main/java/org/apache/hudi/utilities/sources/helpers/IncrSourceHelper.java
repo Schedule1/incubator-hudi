@@ -18,31 +18,32 @@
 
 package org.apache.hudi.utilities.sources.helpers;
 
-import com.google.common.base.Preconditions;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.collection.Pair;
+
+import com.google.common.base.Preconditions;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Row;
 
 public class IncrSourceHelper {
 
   /**
-   * Get a timestamp which is the next value in a descending sequence
+   * Get a timestamp which is the next value in a descending sequence.
    *
    * @param timestamp Timestamp
    */
   private static String getStrictlyLowerTimestamp(String timestamp) {
     long ts = Long.parseLong(timestamp);
     Preconditions.checkArgument(ts > 0, "Timestamp must be positive");
-    Long lower = ts - 1;
+    long lower = ts - 1;
     return "" + lower;
   }
 
   /**
-   * Find begin and end instants to be set for the next fetch
+   * Find begin and end instants to be set for the next fetch.
    *
    * @param jssc Java Spark Context
    * @param srcBasePath Base path of Hudi source table
@@ -51,13 +52,11 @@ public class IncrSourceHelper {
    * @param readLatestOnMissingBeginInstant when begin instant is missing, allow reading from latest committed instant
    * @return begin and end instants
    */
-  public static Pair<String, String> calculateBeginAndEndInstants(
-      JavaSparkContext jssc, String srcBasePath, int numInstantsPerFetch, Option<String> beginInstant,
-      boolean readLatestOnMissingBeginInstant) {
-    Preconditions.checkArgument(numInstantsPerFetch > 0, "Make sure the config"
-        + " hoodie.deltastreamer.source.hoodieincr.num_instants is set to a positive value");
-    HoodieTableMetaClient srcMetaClient = new HoodieTableMetaClient(jssc.hadoopConfiguration(),
-        srcBasePath, true);
+  public static Pair<String, String> calculateBeginAndEndInstants(JavaSparkContext jssc, String srcBasePath,
+      int numInstantsPerFetch, Option<String> beginInstant, boolean readLatestOnMissingBeginInstant) {
+    Preconditions.checkArgument(numInstantsPerFetch > 0,
+        "Make sure the config hoodie.deltastreamer.source.hoodieincr.num_instants is set to a positive value");
+    HoodieTableMetaClient srcMetaClient = new HoodieTableMetaClient(jssc.hadoopConfiguration(), srcBasePath, true);
 
     final HoodieTimeline activeCommitTimeline =
         srcMetaClient.getActiveTimeline().getCommitTimeline().filterCompletedInstants();
@@ -72,16 +71,13 @@ public class IncrSourceHelper {
       }
     });
 
-    Option<HoodieInstant> nthInstant = Option.fromJavaOptional(
-        activeCommitTimeline
-            .findInstantsAfter(beginInstantTime, numInstantsPerFetch)
-            .getInstants()
-            .reduce((x, y) -> y));
-    return Pair.of(beginInstantTime, nthInstant.map(instant -> instant.getTimestamp()).orElse(beginInstantTime));
+    Option<HoodieInstant> nthInstant = Option.fromJavaOptional(activeCommitTimeline
+        .findInstantsAfter(beginInstantTime, numInstantsPerFetch).getInstants().reduce((x, y) -> y));
+    return Pair.of(beginInstantTime, nthInstant.map(HoodieInstant::getTimestamp).orElse(beginInstantTime));
   }
 
   /**
-   * Validate instant time seen in the incoming row
+   * Validate instant time seen in the incoming row.
    *
    * @param row Input Row
    * @param instantTime Hoodie Instant time of the row
@@ -90,14 +86,12 @@ public class IncrSourceHelper {
    */
   public static void validateInstantTime(Row row, String instantTime, String sinceInstant, String endInstant) {
     Preconditions.checkNotNull(instantTime);
-    Preconditions.checkArgument(HoodieTimeline.compareTimestamps(instantTime,
-        sinceInstant, HoodieTimeline.GREATER),
-        "Instant time(_hoodie_commit_time) in row (" + row + ") was : " + instantTime
-            + "but expected to be between " + sinceInstant + "(excl) - "
-            + endInstant + "(incl)");
-    Preconditions.checkArgument(HoodieTimeline.compareTimestamps(instantTime,
-        endInstant, HoodieTimeline.LESSER_OR_EQUAL),
-        "Instant time(_hoodie_commit_time) in row (" + row + ") was : " + instantTime
-            + "but expected to be between " + sinceInstant + "(excl) - " + endInstant + "(incl)");
+    Preconditions.checkArgument(HoodieTimeline.compareTimestamps(instantTime, sinceInstant, HoodieTimeline.GREATER),
+        "Instant time(_hoodie_commit_time) in row (" + row + ") was : " + instantTime + "but expected to be between "
+            + sinceInstant + "(excl) - " + endInstant + "(incl)");
+    Preconditions.checkArgument(
+        HoodieTimeline.compareTimestamps(instantTime, endInstant, HoodieTimeline.LESSER_OR_EQUAL),
+        "Instant time(_hoodie_commit_time) in row (" + row + ") was : " + instantTime + "but expected to be between "
+            + sinceInstant + "(excl) - " + endInstant + "(incl)");
   }
 }

@@ -18,7 +18,6 @@
 
 package org.apache.hudi.index;
 
-import java.io.Serializable;
 import org.apache.hudi.WriteStatus;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieKey;
@@ -32,12 +31,15 @@ import org.apache.hudi.index.bloom.HoodieBloomIndex;
 import org.apache.hudi.index.bloom.HoodieGlobalBloomIndex;
 import org.apache.hudi.index.hbase.HBaseIndex;
 import org.apache.hudi.table.HoodieTable;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import java.io.Serializable;
+
 /**
- * Base class for different types of indexes to determine the mapping from uuid
+ * Base class for different types of indexes to determine the mapping from uuid.
  */
 public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Serializable {
 
@@ -46,7 +48,6 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
   protected HoodieIndex(HoodieWriteConfig config) {
     this.config = config;
   }
-
 
   public static <T extends HoodieRecordPayload> HoodieIndex<T> createIndex(HoodieWriteConfig config,
       JavaSparkContext jsc) throws HoodieIndexException {
@@ -65,18 +66,18 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
   }
 
   /**
-   * Checks if the given [Keys] exists in the hoodie table and returns [Key, Option[partitionPath, fileID]]
-   * If the optional is empty, then the key is not found.
+   * Checks if the given [Keys] exists in the hoodie table and returns [Key, Option[partitionPath, fileID]] If the
+   * optional is empty, then the key is not found.
    */
   public abstract JavaPairRDD<HoodieKey, Option<Pair<String, String>>> fetchRecordLocation(
       JavaRDD<HoodieKey> hoodieKeys, final JavaSparkContext jsc, HoodieTable<T> hoodieTable);
 
   /**
-   * Looks up the index and tags each incoming record with a location of a file that contains the
-   * row (if it is actually present)
+   * Looks up the index and tags each incoming record with a location of a file that contains the row (if it is actually
+   * present).
    */
-  public abstract JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD,
-      JavaSparkContext jsc, HoodieTable<T> hoodieTable) throws HoodieIndexException;
+  public abstract JavaRDD<HoodieRecord<T>> tagLocation(JavaRDD<HoodieRecord<T>> recordRDD, JavaSparkContext jsc,
+      HoodieTable<T> hoodieTable) throws HoodieIndexException;
 
   /**
    * Extracts the location of written records, and updates the index.
@@ -84,8 +85,7 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
    * TODO(vc): We may need to propagate the record as well in a WriteStatus class
    */
   public abstract JavaRDD<WriteStatus> updateLocation(JavaRDD<WriteStatus> writeStatusRDD, JavaSparkContext jsc,
-      HoodieTable<T> hoodieTable)
-      throws HoodieIndexException;
+      HoodieTable<T> hoodieTable) throws HoodieIndexException;
 
   /**
    * Rollback the efffects of the commit made at commitTime.
@@ -93,26 +93,25 @@ public abstract class HoodieIndex<T extends HoodieRecordPayload> implements Seri
   public abstract boolean rollbackCommit(String commitTime);
 
   /**
-   * An index is `global` if {@link HoodieKey} to fileID mapping, does not depend on the
-   * `partitionPath`. Such an implementation is able to obtain the same mapping, for two hoodie keys
-   * with same `recordKey` but different `partitionPath`
+   * An index is `global` if {@link HoodieKey} to fileID mapping, does not depend on the `partitionPath`. Such an
+   * implementation is able to obtain the same mapping, for two hoodie keys with same `recordKey` but different
+   * `partitionPath`
    *
    * @return whether or not, the index implementation is global in nature
    */
   public abstract boolean isGlobal();
 
   /**
-   * This is used by storage to determine, if its safe to send inserts, straight to the log, i.e
-   * having a {@link FileSlice}, with no data file.
+   * This is used by storage to determine, if its safe to send inserts, straight to the log, i.e having a
+   * {@link FileSlice}, with no data file.
    *
    * @return Returns true/false depending on whether the impl has this capability
    */
   public abstract boolean canIndexLogFiles();
 
-
   /**
-   * An index is "implicit" with respect to storage, if just writing new data to a file slice,
-   * updates the index as well. This is used by storage, to save memory footprint in certain cases.
+   * An index is "implicit" with respect to storage, if just writing new data to a file slice, updates the index as
+   * well. This is used by storage, to save memory footprint in certain cases.
    */
   public abstract boolean isImplicitWithStorage();
 

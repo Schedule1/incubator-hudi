@@ -18,13 +18,7 @@
 
 package org.apache.hudi.index.bloom;
 
-import com.google.common.annotations.VisibleForTesting;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import org.apache.hudi.common.model.EmptyHoodieRecordPayload;
 import org.apache.hudi.common.model.HoodieKey;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordLocation;
@@ -35,13 +29,23 @@ import org.apache.hudi.common.util.Option;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.table.HoodieTable;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.Optional;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import scala.Tuple2;
 
 /**
- * This filter will only work with hoodie dataset since it will only load partitions with .hoodie_partition_metadata
+ * This filter will only work with hoodie table since it will only load partitions with .hoodie_partition_metadata
  * file in it.
  */
 public class HoodieGlobalBloomIndex<T extends HoodieRecordPayload> extends HoodieBloomIndex<T> {
@@ -54,14 +58,12 @@ public class HoodieGlobalBloomIndex<T extends HoodieRecordPayload> extends Hoodi
    * Load all involved files as <Partition, filename> pair RDD from all partitions in the table.
    */
   @Override
-  @VisibleForTesting
   List<Tuple2<String, BloomIndexFileInfo>> loadInvolvedFiles(List<String> partitions, final JavaSparkContext jsc,
-      final HoodieTable hoodieTable) {
+                                                             final HoodieTable hoodieTable) {
     HoodieTableMetaClient metaClient = hoodieTable.getMetaClient();
     try {
-      List<String> allPartitionPaths = FSUtils
-          .getAllPartitionPaths(metaClient.getFs(), metaClient.getBasePath(),
-              config.shouldAssumeDatePartitioning());
+      List<String> allPartitionPaths = FSUtils.getAllPartitionPaths(metaClient.getFs(), metaClient.getBasePath(),
+          config.shouldAssumeDatePartitioning());
       return super.loadInvolvedFiles(allPartitionPaths, jsc, hoodieTable);
     } catch (IOException e) {
       throw new HoodieIOException("Failed to load all partitions", e);
@@ -70,52 +72,72 @@ public class HoodieGlobalBloomIndex<T extends HoodieRecordPayload> extends Hoodi
 
   /**
    * For each incoming record, produce N output records, 1 each for each file against which the record's key needs to be
-   * checked. For datasets, where the keys have a definite insert order (e.g: timestamp as prefix), the number of files
+   * checked. For tables, where the keys have a definite insert order (e.g: timestamp as prefix), the number of files
    * to be compared gets cut down a lot from range pruning.
-   *
+   * <p>
    * Sub-partition to ensure the records can be looked up against files & also prune file<=>record comparisons based on
    * recordKey ranges in the index info. the partition path of the incoming record (partitionRecordKeyPairRDD._2()) will
    * be ignored since the search scope should be bigger than that
    */
 
   @Override
-  @VisibleForTesting
   JavaRDD<Tuple2<String, HoodieKey>> explodeRecordRDDWithFileComparisons(
       final Map<String, List<BloomIndexFileInfo>> partitionToFileIndexInfo,
       JavaPairRDD<String, String> partitionRecordKeyPairRDD) {
-    Map<String, String> indexToPartitionMap = new HashMap<>();
-    for (Entry<String, List<BloomIndexFileInfo>> entry : partitionToFileIndexInfo.entrySet()) {
-      entry.getValue().forEach(indexFile -> indexToPartitionMap.put(indexFile.getFileId(), entry.getKey()));
-    }
 
-    IndexFileFilter indexFileFilter = config.getBloomIndexPruneByRanges()
-        ? new IntervalTreeBasedGlobalIndexFileFilter(partitionToFileIndexInfo)
-        : new ListBasedGlobalIndexFileFilter(partitionToFileIndexInfo);
+    IndexFileFilter indexFileFilter =
+        config.getBloomIndexPruneByRanges() ? new IntervalTreeBasedGlobalIndexFileFilter(partitionToFileIndexInfo)
+            : new ListBasedGlobalIndexFileFilter(partitionToFileIndexInfo);
 
     return partitionRecordKeyPairRDD.map(partitionRecordKeyPair -> {
       String recordKey = partitionRecordKeyPair._2();
       String partitionPath = partitionRecordKeyPair._1();
 
-      return indexFileFilter.getMatchingFiles(partitionPath, recordKey).stream()
-          .map(file -> new Tuple2<>(file, new HoodieKey(recordKey, indexToPartitionMap.get(file))))
+      return indexFileFilter.getMatchingFilesAndPartition(partitionPath, recordKey).stream()
+          .map(partitionFileIdPair -> new Tuple2<>(partitionFileIdPair.getRight(),
+              new HoodieKey(recordKey, partitionFileIdPair.getLeft())))
           .collect(Collectors.toList());
     }).flatMap(List::iterator);
   }
 
-
   /**
-   * Tagging for global index should only consider the record key
+   * Tagging for global index should only consider the record key.
    */
   @Override
   protected JavaRDD<HoodieRecord<T>> tagLocationBacktoRecords(
-      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyFilenamePairRDD, JavaRDD<HoodieRecord<T>> recordRDD) {
-    JavaPairRDD<String, HoodieRecord<T>> rowKeyRecordPairRDD = recordRDD
-        .mapToPair(record -> new Tuple2<>(record.getRecordKey(), record));
+      JavaPairRDD<HoodieKey, HoodieRecordLocation> keyLocationPairRDD, JavaRDD<HoodieRecord<T>> recordRDD) {
 
-    // Here as the recordRDD might have more data than rowKeyRDD (some rowKeys' fileId is null),
-    // so we do left outer join.
-    return rowKeyRecordPairRDD.leftOuterJoin(keyFilenamePairRDD.mapToPair(p -> new Tuple2<>(p._1.getRecordKey(), p._2)))
-        .values().map(value -> getTaggedRecord(value._1, Option.ofNullable(value._2.orNull())));
+    JavaPairRDD<String, HoodieRecord<T>> incomingRowKeyRecordPairRDD =
+        recordRDD.mapToPair(record -> new Tuple2<>(record.getRecordKey(), record));
+
+    JavaPairRDD<String, Tuple2<HoodieRecordLocation, HoodieKey>> existingRecordKeyToRecordLocationHoodieKeyMap =
+        keyLocationPairRDD.mapToPair(p -> new Tuple2<>(p._1.getRecordKey(), new Tuple2<>(p._2, p._1)));
+
+    // Here as the recordRDD might have more data than rowKeyRDD (some rowKeys' fileId is null), so we do left outer join.
+    return incomingRowKeyRecordPairRDD.leftOuterJoin(existingRecordKeyToRecordLocationHoodieKeyMap).values().flatMap(record -> {
+      final HoodieRecord<T> hoodieRecord = record._1;
+      final Optional<Tuple2<HoodieRecordLocation, HoodieKey>> recordLocationHoodieKeyPair = record._2;
+      if (recordLocationHoodieKeyPair.isPresent()) {
+        // Record key matched to file
+        if (config.getBloomIndexUpdatePartitionPath()
+            && !recordLocationHoodieKeyPair.get()._2.getPartitionPath().equals(hoodieRecord.getPartitionPath())) {
+          // Create an empty record to delete the record in the old partition
+          HoodieRecord<T> emptyRecord = new HoodieRecord(recordLocationHoodieKeyPair.get()._2,
+              new EmptyHoodieRecordPayload());
+          // Tag the incoming record for inserting to the new partition
+          HoodieRecord<T> taggedRecord = getTaggedRecord(hoodieRecord, Option.empty());
+          return Arrays.asList(emptyRecord, taggedRecord).iterator();
+        } else {
+          // Ignore the incoming record's partition, regardless of whether it differs from its old partition or not.
+          // When it differs, the record will still be updated at its old partition.
+          return Collections.singletonList(
+              getTaggedRecord(new HoodieRecord<>(recordLocationHoodieKeyPair.get()._2, hoodieRecord.getData()),
+                  Option.ofNullable(recordLocationHoodieKeyPair.get()._1))).iterator();
+        }
+      } else {
+        return Collections.singletonList(getTaggedRecord(hoodieRecord, Option.empty())).iterator();
+      }
+    });
   }
 
   @Override

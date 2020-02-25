@@ -18,24 +18,25 @@
 
 package org.apache.hudi.timeline.service.handlers;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hudi.common.table.timeline.dto.CompactionOpDTO;
 import org.apache.hudi.common.table.timeline.dto.FileGroupDTO;
 import org.apache.hudi.common.table.timeline.dto.FileSliceDTO;
 import org.apache.hudi.common.table.view.FileSystemViewManager;
 
+import org.apache.hadoop.conf.Configuration;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
- * REST Handler servicing file-slice requests
+ * REST Handler servicing file-slice requests.
  */
 public class FileSliceHandler extends Handler {
 
-  public FileSliceHandler(Configuration conf,
-      FileSystemViewManager viewManager) throws IOException {
+  public FileSliceHandler(Configuration conf, FileSystemViewManager viewManager) throws IOException {
     super(conf, viewManager);
   }
 
@@ -49,16 +50,17 @@ public class FileSliceHandler extends Handler {
         .map(FileSliceDTO::fromFileSlice).collect(Collectors.toList());
   }
 
-  public List<FileSliceDTO> getLatestMergedFileSlicesBeforeOrOn(String basePath,
-      String partitionPath, String maxInstantTime) {
+  public List<FileSliceDTO> getLatestMergedFileSlicesBeforeOrOn(String basePath, String partitionPath,
+      String maxInstantTime) {
     return viewManager.getFileSystemView(basePath).getLatestMergedFileSlicesBeforeOrOn(partitionPath, maxInstantTime)
         .map(FileSliceDTO::fromFileSlice).collect(Collectors.toList());
   }
 
-  public List<FileSliceDTO> getLatestFileSlicesBeforeOrOn(String basePath, String partitionPath,
-      String maxInstantTime, boolean includeFileSlicesInPendingCompaction) {
-    return viewManager.getFileSystemView(basePath).getLatestFileSlicesBeforeOrOn(partitionPath, maxInstantTime,
-        includeFileSlicesInPendingCompaction).map(FileSliceDTO::fromFileSlice).collect(Collectors.toList());
+  public List<FileSliceDTO> getLatestFileSlicesBeforeOrOn(String basePath, String partitionPath, String maxInstantTime,
+      boolean includeFileSlicesInPendingCompaction) {
+    return viewManager.getFileSystemView(basePath)
+        .getLatestFileSlicesBeforeOrOn(partitionPath, maxInstantTime, includeFileSlicesInPendingCompaction)
+        .map(FileSliceDTO::fromFileSlice).collect(Collectors.toList());
   }
 
   public List<FileSliceDTO> getLatestUnCompactedFileSlices(String basePath, String partitionPath) {
@@ -67,13 +69,13 @@ public class FileSliceHandler extends Handler {
   }
 
   public List<FileSliceDTO> getLatestFileSlices(String basePath, String partitionPath) {
-    return viewManager.getFileSystemView(basePath).getLatestFileSlices(partitionPath)
-        .map(FileSliceDTO::fromFileSlice).collect(Collectors.toList());
+    return viewManager.getFileSystemView(basePath).getLatestFileSlices(partitionPath).map(FileSliceDTO::fromFileSlice)
+        .collect(Collectors.toList());
   }
 
   public List<FileSliceDTO> getLatestFileSlice(String basePath, String partitionPath, String fileId) {
     return viewManager.getFileSystemView(basePath).getLatestFileSlice(partitionPath, fileId)
-        .map(FileSliceDTO::fromFileSlice).map(dto -> Arrays.asList(dto)).orElse(new ArrayList<>());
+        .map(FileSliceDTO::fromFileSlice).map(Arrays::asList).orElse(new ArrayList<>());
   }
 
   public List<CompactionOpDTO> getPendingCompactionOperations(String basePath) {
@@ -83,11 +85,11 @@ public class FileSliceHandler extends Handler {
   }
 
   public List<FileGroupDTO> getAllFileGroups(String basePath, String partitionPath) {
-    return viewManager.getFileSystemView(basePath).getAllFileGroups(partitionPath)
-        .map(FileGroupDTO::fromFileGroup).collect(Collectors.toList());
+    return viewManager.getFileSystemView(basePath).getAllFileGroups(partitionPath).map(FileGroupDTO::fromFileGroup)
+        .collect(Collectors.toList());
   }
 
-  public boolean refreshDataset(String basePath) {
+  public boolean refreshTable(String basePath) {
     viewManager.clearFileSystemView(basePath);
     return true;
   }

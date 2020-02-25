@@ -18,16 +18,12 @@
 
 package org.apache.hudi.hive.util;
 
+import org.apache.hudi.common.model.HoodieTestUtils;
+import org.apache.hudi.common.util.FileIOUtils;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -39,8 +35,6 @@ import org.apache.hadoop.hive.metastore.TUGIBasedProcessor;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.thrift.TUGIContainingTransport;
 import org.apache.hive.service.server.HiveServer2;
-import org.apache.hudi.common.model.HoodieTestUtils;
-import org.apache.hudi.common.util.FileIOUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TProcessor;
@@ -55,14 +49,22 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class HiveTestService {
 
-  private static Logger LOG = LogManager.getLogger(HiveTestService.class);
+  private static final Logger LOG = LogManager.getLogger(HiveTestService.class);
 
   private static final int CONNECTION_TIMEOUT = 30000;
 
   /**
-   * Configuration settings
+   * Configuration settings.
    */
   private Configuration hadoopConf;
   private String workDir;
@@ -119,20 +121,6 @@ public class HiveTestService {
     return hiveServer;
   }
 
-  public void stop() throws IOException {
-    resetSystemProperties();
-    if (tServer != null) {
-      tServer.stop();
-    }
-    if (hiveServer != null) {
-      hiveServer.stop();
-    }
-    LOG.info("Hive Minicluster service shut down.");
-    tServer = null;
-    hiveServer = null;
-    hadoopConf = null;
-  }
-
   private HiveConf configureHive(Configuration conf, String localHiveLocation) throws IOException {
     conf.set("hive.metastore.local", "false");
     conf.set(HiveConf.ConfVars.METASTOREURIS.varname, "thrift://" + bindIP + ":" + metastorePort);
@@ -142,7 +130,7 @@ public class HiveTestService {
     // 'new HiveConf()'. This is fixed by https://issues.apache.org/jira/browse/HIVE-6657,
     // in Hive 0.14.
     // As a workaround, the property is set in hive-site.xml in this module.
-    //conf.set(HiveConf.ConfVars.HIVE_SERVER2_AUTHENTICATION.varname, "NOSASL");
+    // conf.set(HiveConf.ConfVars.HIVE_SERVER2_AUTHENTICATION.varname, "NOSASL");
     File localHiveDir = new File(localHiveLocation);
     localHiveDir.mkdirs();
     File metastoreDbDir = new File(localHiveDir, "metastore_db");
@@ -194,17 +182,6 @@ public class HiveTestService {
     }
   }
 
-  private void resetSystemProperties() {
-    for (Map.Entry<String, String> entry : sysProps.entrySet()) {
-      if (entry.getValue() != null) {
-        System.setProperty(entry.getKey(), entry.getValue());
-      } else {
-        System.getProperties().remove(entry.getKey());
-      }
-    }
-    sysProps.clear();
-  }
-
   private static String getHiveLocation(String baseLocation) {
     return baseLocation + Path.SEPARATOR + "hive";
   }
@@ -218,15 +195,12 @@ public class HiveTestService {
 
   // XXX: From org.apache.hadoop.hive.metastore.HiveMetaStore,
   // with changes to support binding to a specified IP address (not only 0.0.0.0)
-
-
   private static final class ChainedTTransportFactory extends TTransportFactory {
 
     private final TTransportFactory parentTransFactory;
     private final TTransportFactory childTransFactory;
 
-    private ChainedTTransportFactory(TTransportFactory parentTransFactory,
-        TTransportFactory childTransFactory) {
+    private ChainedTTransportFactory(TTransportFactory parentTransFactory, TTransportFactory childTransFactory) {
       this.parentTransFactory = parentTransFactory;
       this.childTransFactory = childTransFactory;
     }
@@ -236,7 +210,6 @@ public class HiveTestService {
       return childTransFactory.getTransport(parentTransFactory.getTransport(trans));
     }
   }
-
 
   private static final class TServerSocketKeepAlive extends TServerSocket {
 
@@ -268,17 +241,15 @@ public class HiveTestService {
       int minWorkerThreads = conf.getIntVar(HiveConf.ConfVars.METASTORESERVERMINTHREADS);
       int maxWorkerThreads = conf.getIntVar(HiveConf.ConfVars.METASTORESERVERMAXTHREADS);
       boolean tcpKeepAlive = conf.getBoolVar(HiveConf.ConfVars.METASTORE_TCP_KEEP_ALIVE);
-      boolean useFramedTransport = conf.getBoolVar(
-          HiveConf.ConfVars.METASTORE_USE_THRIFT_FRAMED_TRANSPORT);
+      boolean useFramedTransport = conf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_FRAMED_TRANSPORT);
 
       // don't support SASL yet
-      //boolean useSasl = conf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL);
+      // boolean useSasl = conf.getBoolVar(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL);
 
       TServerTransport serverTransport;
       if (forceBindIP != null) {
         InetSocketAddress address = new InetSocketAddress(forceBindIP, port);
-        serverTransport =
-            tcpKeepAlive ? new TServerSocketKeepAlive(address) : new TServerSocket(address);
+        serverTransport = tcpKeepAlive ? new TServerSocketKeepAlive(address) : new TServerSocket(address);
 
       } else {
         serverTransport = tcpKeepAlive ? new TServerSocketKeepAlive(port) : new TServerSocket(port);
@@ -287,37 +258,27 @@ public class HiveTestService {
       TProcessor processor;
       TTransportFactory transFactory;
 
-      IHMSHandler handler = (IHMSHandler) HiveMetaStore
-          .newRetryingHMSHandler("new db based metaserver",
-              conf, true);
+      IHMSHandler handler = (IHMSHandler) HiveMetaStore.newRetryingHMSHandler("new db based metaserver", conf, true);
 
       if (conf.getBoolVar(HiveConf.ConfVars.METASTORE_EXECUTE_SET_UGI)) {
-        transFactory =
-            useFramedTransport ? new ChainedTTransportFactory(new TFramedTransport.Factory(),
-                new TUGIContainingTransport.Factory()) : new TUGIContainingTransport.Factory();
+        transFactory = useFramedTransport
+            ? new ChainedTTransportFactory(new TFramedTransport.Factory(), new TUGIContainingTransport.Factory())
+            : new TUGIContainingTransport.Factory();
 
-        processor = new TUGIBasedProcessor<IHMSHandler>(handler);
+        processor = new TUGIBasedProcessor<>(handler);
         LOG.info("Starting DB backed MetaStore Server with SetUGI enabled");
       } else {
-        transFactory =
-            useFramedTransport ? new TFramedTransport.Factory() : new TTransportFactory();
-        processor = new TSetIpAddressProcessor<IHMSHandler>(handler);
+        transFactory = useFramedTransport ? new TFramedTransport.Factory() : new TTransportFactory();
+        processor = new TSetIpAddressProcessor<>(handler);
         LOG.info("Starting DB backed MetaStore Server");
       }
 
       TThreadPoolServer.Args args = new TThreadPoolServer.Args(serverTransport).processor(processor)
-          .transportFactory(transFactory)
-          .protocolFactory(new TBinaryProtocol.Factory())
-          .minWorkerThreads(minWorkerThreads)
-          .maxWorkerThreads(maxWorkerThreads);
+          .transportFactory(transFactory).protocolFactory(new TBinaryProtocol.Factory())
+          .minWorkerThreads(minWorkerThreads).maxWorkerThreads(maxWorkerThreads);
 
       final TServer tServer = new TThreadPoolServer(args);
-      executorService.submit(new Runnable() {
-        @Override
-        public void run() {
-          tServer.serve();
-        }
-      });
+      executorService.submit(tServer::serve);
       return tServer;
     } catch (Throwable x) {
       throw new IOException(x);

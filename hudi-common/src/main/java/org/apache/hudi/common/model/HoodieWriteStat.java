@@ -20,9 +20,11 @@ package org.apache.hudi.common.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.io.Serializable;
-import javax.annotation.Nullable;
 import org.apache.hadoop.fs.Path;
+
+import javax.annotation.Nullable;
+
+import java.io.Serializable;
 
 /**
  * Statistics about a single Hoodie write operation.
@@ -33,12 +35,12 @@ public class HoodieWriteStat implements Serializable {
   public static final String NULL_COMMIT = "null";
 
   /**
-   * Id of the file being written
+   * Id of the file being written.
    */
   private String fileId;
 
   /**
-   * Relative path to the file from the base path
+   * Relative path to the file from the base path.
    */
   private String path;
 
@@ -48,8 +50,8 @@ public class HoodieWriteStat implements Serializable {
   private String prevCommit;
 
   /**
-   * Total number of records written for this file. - for updates, its the entire number of records
-   * in the file - for inserts, its the actual number of records inserted.
+   * Total number of records written for this file. - for updates, its the entire number of records in the file - for
+   * inserts, its the actual number of records inserted.
    */
   private long numWrites;
 
@@ -64,12 +66,12 @@ public class HoodieWriteStat implements Serializable {
   private long numUpdateWrites;
 
   /**
-   * Total number of insert records or converted to updates (for small file handling)
+   * Total number of insert records or converted to updates (for small file handling).
    */
   private long numInserts;
 
   /**
-   * Total size of file written
+   * Total size of file written.
    */
   private long totalWriteBytes;
 
@@ -89,54 +91,55 @@ public class HoodieWriteStat implements Serializable {
    */
 
   /**
-   * Partition Path associated with this writeStat
+   * Partition Path associated with this writeStat.
    */
   @Nullable
   private String partitionPath;
 
   /**
-   * Total number of log records that were compacted by a compaction operation
+   * Total number of log records that were compacted by a compaction operation.
    */
   @Nullable
   private long totalLogRecords;
 
   /**
-   * Total number of log files compacted for a file slice with this base fileid
+   * Total number of log files compacted for a file slice with this base fileid.
    */
   @Nullable
   private long totalLogFilesCompacted;
 
   /**
-   * Total size of all log files for a file slice with this base fileid
+   * Total size of all log files for a file slice with this base fileid.
    */
   @Nullable
   private long totalLogSizeCompacted;
 
   /**
-   * Total number of records updated by a compaction operation
+   * Total number of records updated by a compaction operation.
    */
   @Nullable
   private long totalUpdatedRecordsCompacted;
 
   /**
-   * Total number of log blocks seen in a compaction operation
+   * Total number of log blocks seen in a compaction operation.
    */
   @Nullable
   private long totalLogBlocks;
 
   /**
-   * Total number of corrupt blocks seen in a compaction operation
+   * Total number of corrupt blocks seen in a compaction operation.
    */
   @Nullable
   private long totalCorruptLogBlock;
 
   /**
-   * Total number of rollback blocks seen in a compaction operation
+   * Total number of rollback blocks seen in a compaction operation.
    */
+  @Nullable
   private long totalRollbackBlocks;
 
   /**
-   * File Size as of close
+   * File Size as of close.
    */
   private long fileSizeInBytes;
 
@@ -288,7 +291,7 @@ public class HoodieWriteStat implements Serializable {
     return totalRollbackBlocks;
   }
 
-  public void setTotalRollbackBlocks(Long totalRollbackBlocks) {
+  public void setTotalRollbackBlocks(long totalRollbackBlocks) {
     this.totalRollbackBlocks = totalRollbackBlocks;
   }
 
@@ -318,25 +321,13 @@ public class HoodieWriteStat implements Serializable {
 
   @Override
   public String toString() {
-    return "HoodieWriteStat{"
-        + "fileId='" + fileId + '\''
-        + ", path='" + path + '\''
-        + ", prevCommit='" + prevCommit + '\''
-        + ", numWrites=" + numWrites
-        + ", numDeletes=" + numDeletes
-        + ", numUpdateWrites=" + numUpdateWrites
-        + ", totalWriteBytes=" + totalWriteBytes
-        + ", totalWriteErrors=" + totalWriteErrors
-        + ", tempPath='" + tempPath + '\''
-        + ", partitionPath='" + partitionPath
-        + '\'' + ", totalLogRecords=" + totalLogRecords
-        + ", totalLogFilesCompacted=" + totalLogFilesCompacted
-        + ", totalLogSizeCompacted=" + totalLogSizeCompacted
-        + ", totalUpdatedRecordsCompacted=" + totalUpdatedRecordsCompacted
-        + ", totalLogBlocks=" + totalLogBlocks
-        + ", totalCorruptLogBlock=" + totalCorruptLogBlock
-        + ", totalRollbackBlocks=" + totalRollbackBlocks
-        + '}';
+    return "HoodieWriteStat{fileId='" + fileId + '\'' + ", path='" + path + '\'' + ", prevCommit='" + prevCommit
+        + '\'' + ", numWrites=" + numWrites + ", numDeletes=" + numDeletes + ", numUpdateWrites=" + numUpdateWrites
+        + ", totalWriteBytes=" + totalWriteBytes + ", totalWriteErrors=" + totalWriteErrors + ", tempPath='" + tempPath
+        + '\'' + ", partitionPath='" + partitionPath + '\'' + ", totalLogRecords=" + totalLogRecords
+        + ", totalLogFilesCompacted=" + totalLogFilesCompacted + ", totalLogSizeCompacted=" + totalLogSizeCompacted
+        + ", totalUpdatedRecordsCompacted=" + totalUpdatedRecordsCompacted + ", totalLogBlocks=" + totalLogBlocks
+        + ", totalCorruptLogBlock=" + totalCorruptLogBlock + ", totalRollbackBlocks=" + totalRollbackBlocks + '}';
   }
 
   @Override
@@ -363,21 +354,25 @@ public class HoodieWriteStat implements Serializable {
     return result;
   }
 
+  /**
+   * The runtime stats for writing operation.
+   */
   public static class RuntimeStats implements Serializable {
+
     /**
-     * Total time taken to read and merge logblocks in a log file
+     * Total time taken to read and merge logblocks in a log file.
      */
     @Nullable
     private long totalScanTime;
 
     /**
-     * Total time taken by a Hoodie Merge for an existing file
+     * Total time taken by a Hoodie Merge for an existing file.
      */
     @Nullable
     private long totalUpsertTime;
 
     /**
-     * Total time taken by a Hoodie Insert to a file
+     * Total time taken by a Hoodie Insert to a file.
      */
     @Nullable
     private long totalCreateTime;

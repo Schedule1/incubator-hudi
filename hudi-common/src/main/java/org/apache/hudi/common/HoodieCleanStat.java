@@ -18,14 +18,15 @@
 
 package org.apache.hudi.common;
 
-import java.io.Serializable;
-import java.util.List;
 import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.util.Option;
 
+import java.io.Serializable;
+import java.util.List;
+
 /**
- * Collects stats about a single partition clean operation
+ * Collects stats about a single partition clean operation.
  */
 public class HoodieCleanStat implements Serializable {
 
@@ -41,9 +42,8 @@ public class HoodieCleanStat implements Serializable {
   // Earliest commit that was retained in this clean
   private final String earliestCommitToRetain;
 
-  public HoodieCleanStat(HoodieCleaningPolicy policy, String partitionPath,
-      List<String> deletePathPatterns, List<String> successDeleteFiles,
-      List<String> failedDeleteFiles, String earliestCommitToRetain) {
+  public HoodieCleanStat(HoodieCleaningPolicy policy, String partitionPath, List<String> deletePathPatterns,
+      List<String> successDeleteFiles, List<String> failedDeleteFiles, String earliestCommitToRetain) {
     this.policy = policy;
     this.partitionPath = partitionPath;
     this.deletePathPatterns = deletePathPatterns;
@@ -80,6 +80,9 @@ public class HoodieCleanStat implements Serializable {
     return new Builder();
   }
 
+  /**
+   * A builder used to build {@link HoodieCleanStat}.
+   */
   public static class Builder {
 
     private HoodieCleaningPolicy policy;
@@ -115,14 +118,26 @@ public class HoodieCleanStat implements Serializable {
     }
 
     public Builder withEarliestCommitRetained(Option<HoodieInstant> earliestCommitToRetain) {
-      this.earliestCommitToRetain = (earliestCommitToRetain.isPresent())
-          ? earliestCommitToRetain.get().getTimestamp() : "-1";
+      this.earliestCommitToRetain =
+          (earliestCommitToRetain.isPresent()) ? earliestCommitToRetain.get().getTimestamp() : "";
       return this;
     }
 
     public HoodieCleanStat build() {
-      return new HoodieCleanStat(policy, partitionPath, deletePathPatterns,
-          successDeleteFiles, failedDeleteFiles, earliestCommitToRetain);
+      return new HoodieCleanStat(policy, partitionPath, deletePathPatterns, successDeleteFiles, failedDeleteFiles,
+          earliestCommitToRetain);
     }
+  }
+
+  @Override
+  public String toString() {
+    return "HoodieCleanStat{"
+        + "policy=" + policy
+        + ", partitionPath='" + partitionPath + '\''
+        + ", deletePathPatterns=" + deletePathPatterns
+        + ", successDeleteFiles=" + successDeleteFiles
+        + ", failedDeleteFiles=" + failedDeleteFiles
+        + ", earliestCommitToRetain='" + earliestCommitToRetain + '\''
+        + '}';
   }
 }

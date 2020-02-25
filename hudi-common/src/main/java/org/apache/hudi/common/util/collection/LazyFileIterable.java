@@ -18,16 +18,17 @@
 
 package org.apache.hudi.common.util.collection;
 
+import org.apache.hudi.common.util.BufferedRandomAccessFile;
+import org.apache.hudi.exception.HoodieException;
+
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import org.apache.hudi.exception.HoodieException;
 
 /**
- * Iterable to lazily fetch values spilled to disk. This class uses RandomAccessFile to randomly access the position of
+ * Iterable to lazily fetch values spilled to disk. This class uses BufferedRandomAccessFile to randomly access the position of
  * the latest value for a key spilled to disk and returns the result.
  */
 public class LazyFileIterable<T, R> implements Iterable<R> {
@@ -57,21 +58,18 @@ public class LazyFileIterable<T, R> implements Iterable<R> {
   public class LazyFileIterator<T, R> implements Iterator<R> {
 
     private final String filePath;
-    private RandomAccessFile readOnlyFileHandle;
+    private BufferedRandomAccessFile readOnlyFileHandle;
     private final Iterator<Map.Entry<T, DiskBasedMap.ValueMetadata>> metadataIterator;
 
     public LazyFileIterator(String filePath, Map<T, DiskBasedMap.ValueMetadata> map) throws IOException {
       this.filePath = filePath;
-      this.readOnlyFileHandle = new RandomAccessFile(filePath, "r");
+      this.readOnlyFileHandle = new BufferedRandomAccessFile(filePath, "r", DiskBasedMap.BUFFER_SIZE);
       readOnlyFileHandle.seek(0);
 
       // sort the map in increasing order of offset of value so disk seek is only in one(forward) direction
-      this.metadataIterator = map
-          .entrySet()
-          .stream()
-          .sorted(
-              (Map.Entry<T, DiskBasedMap.ValueMetadata> o1, Map.Entry<T, DiskBasedMap.ValueMetadata> o2) ->
-                  o1.getValue().getOffsetOfValue().compareTo(o2.getValue().getOffsetOfValue()))
+      this.metadataIterator = map.entrySet().stream()
+          .sorted((Map.Entry<T, DiskBasedMap.ValueMetadata> o1, Map.Entry<T, DiskBasedMap.ValueMetadata> o2) -> o1
+              .getValue().getOffsetOfValue().compareTo(o2.getValue().getOffsetOfValue()))
           .collect(Collectors.toList()).iterator();
       this.addShutdownHook();
     }
@@ -117,6 +115,7 @@ public class LazyFileIterable<T, R> implements Iterable<R> {
 
     private void addShutdownHook() {
       Runtime.getRuntime().addShutdownHook(new Thread() {
+        @Override
         public void run() {
           close();
         }

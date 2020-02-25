@@ -18,14 +18,16 @@
 
 package org.apache.hudi.common.model;
 
+import org.apache.hudi.common.util.FSUtils;
+
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hudi.common.util.FSUtils;
 
 /**
  * Abstracts a single log file. Contains methods to extract metadata like the fileId, version and extension from the log
@@ -109,9 +111,7 @@ public class HoodieLogFile implements Serializable {
     String baseCommitTime = getBaseCommitTime();
     Path path = getPath();
     String extension = "." + FSUtils.getFileExtensionFromLog(path);
-    int newVersion = FSUtils
-        .computeNextLogVersion(fs, path.getParent(), fileId,
-            extension, baseCommitTime);
+    int newVersion = FSUtils.computeNextLogVersion(fs, path.getParent(), fileId, extension, baseCommitTime);
     return new HoodieLogFile(new Path(path.getParent(),
         FSUtils.makeLogFileName(fileId, extension, baseCommitTime, newVersion, logWriteToken)));
   }
@@ -125,7 +125,7 @@ public class HoodieLogFile implements Serializable {
   }
 
   /**
-   * Comparator to order log-files
+   * Comparator to order log-files.
    */
   public static class LogFileComparator implements Comparator<HoodieLogFile>, Serializable {
 
@@ -179,9 +179,6 @@ public class HoodieLogFile implements Serializable {
 
   @Override
   public String toString() {
-    return "HoodieLogFile{"
-        + "pathStr='" + pathStr + '\''
-        + ", fileLen=" + fileLen
-        + '}';
+    return "HoodieLogFile{pathStr='" + pathStr + '\'' + ", fileLen=" + fileLen + '}';
   }
 }

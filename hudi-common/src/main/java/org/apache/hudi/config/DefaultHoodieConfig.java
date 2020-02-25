@@ -22,7 +22,7 @@ import java.io.Serializable;
 import java.util.Properties;
 
 /**
- * Default Way to load Hoodie config through a java.util.Properties
+ * Default Way to load Hoodie config through a {@link java.util.Properties}.
  */
 public class DefaultHoodieConfig implements Serializable {
 
@@ -32,15 +32,13 @@ public class DefaultHoodieConfig implements Serializable {
     this.props = props;
   }
 
-  public static void setDefaultOnCondition(Properties props, boolean condition, String propName,
-      String defaultValue) {
+  public static void setDefaultOnCondition(Properties props, boolean condition, String propName, String defaultValue) {
     if (condition) {
       props.setProperty(propName, defaultValue);
     }
   }
 
-  public static void setDefaultOnCondition(Properties props, boolean condition,
-      DefaultHoodieConfig config) {
+  public static void setDefaultOnCondition(Properties props, boolean condition, DefaultHoodieConfig config) {
     if (condition) {
       props.putAll(config.getProps());
     }

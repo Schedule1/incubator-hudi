@@ -18,34 +18,37 @@
 
 package org.apache.hudi.common;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.apache.hudi.common.model.HoodieTestUtils;
+import org.apache.hudi.common.util.HoodieAvroUtils;
+import org.apache.hudi.hadoop.realtime.HoodieParquetRealtimeInputFormat;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hudi.common.model.HoodieTestUtils;
-import org.apache.hudi.common.util.HoodieAvroUtils;
-import org.apache.hudi.hadoop.realtime.HoodieParquetRealtimeInputFormat;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Utility methods to aid in testing MergeOnRead (workaround for HoodieReadClient for MOR)
+ * Utility methods to aid in testing MergeOnRead (workaround for HoodieReadClient for MOR).
  */
 public class HoodieMergeOnReadTestUtils {
 
-  public static List<GenericRecord> getRecordsUsingInputFormat(List<String> inputPaths, String basePath)
-      throws IOException {
+  public static List<GenericRecord> getRecordsUsingInputFormat(List<String> inputPaths, String basePath) {
     JobConf jobConf = new JobConf();
-    Schema schema = HoodieAvroUtils.addMetadataFields(Schema.parse(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA));
+    Schema schema = HoodieAvroUtils.addMetadataFields(
+        new Schema.Parser().parse(HoodieTestDataGenerator.TRIP_EXAMPLE_SCHEMA));
     HoodieParquetRealtimeInputFormat inputFormat = new HoodieParquetRealtimeInputFormat();
     setPropsForInputFormat(inputFormat, jobConf, schema, basePath);
     return inputPaths.stream().map(path -> {
@@ -82,12 +85,23 @@ public class HoodieMergeOnReadTestUtils {
     String names = fields.stream().map(f -> f.name().toString()).collect(Collectors.joining(","));
     String postions = fields.stream().map(f -> String.valueOf(f.pos())).collect(Collectors.joining(","));
     Configuration conf = HoodieTestUtils.getDefaultHadoopConf();
+
+    String hiveColumnNames = fields.stream().filter(field -> !field.name().equalsIgnoreCase("datestr"))
+        .map(Schema.Field::name).collect(Collectors.joining(","));
+    hiveColumnNames = hiveColumnNames + ",datestr";
+
+    String hiveColumnTypes = HoodieAvroUtils.addMetadataColumnTypes(HoodieTestDataGenerator.TRIP_HIVE_COLUMN_TYPES);
+    hiveColumnTypes = hiveColumnTypes + ",string";
+    jobConf.set(hive_metastoreConstants.META_TABLE_COLUMNS, hiveColumnNames);
+    jobConf.set(hive_metastoreConstants.META_TABLE_COLUMN_TYPES, hiveColumnTypes);
     jobConf.set(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR, names);
     jobConf.set(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR, postions);
-    jobConf.set("partition_columns", "datestr");
+    jobConf.set(hive_metastoreConstants.META_TABLE_PARTITION_COLUMNS, "datestr");
+    conf.set(hive_metastoreConstants.META_TABLE_COLUMNS, hiveColumnNames);
     conf.set(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR, names);
     conf.set(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR, postions);
-    conf.set("partition_columns", "datestr");
+    conf.set(hive_metastoreConstants.META_TABLE_PARTITION_COLUMNS, "datestr");
+    conf.set(hive_metastoreConstants.META_TABLE_COLUMN_TYPES, hiveColumnTypes);
     inputFormat.setConf(conf);
     jobConf.addResource(conf);
   }

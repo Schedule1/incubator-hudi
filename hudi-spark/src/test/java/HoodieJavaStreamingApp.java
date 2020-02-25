@@ -16,15 +16,6 @@
  * limitations under the License.
  */
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hudi.DataSourceReadOptions;
 import org.apache.hudi.DataSourceWriteOptions;
 import org.apache.hudi.HoodieDataSourceHelpers;
@@ -32,6 +23,11 @@ import org.apache.hudi.common.HoodieTestDataGenerator;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.hive.MultiPartKeysValueExtractor;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -43,8 +39,13 @@ import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.ProcessingTime;
 
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 /**
- * Sample program that writes & reads hoodie datasets via the Spark datasource streaming
+ * Sample program that writes & reads hoodie tables via the Spark datasource streaming.
  */
 public class HoodieJavaStreamingApp {
 
@@ -93,11 +94,11 @@ public class HoodieJavaStreamingApp {
   public Boolean help = false;
 
 
-  private static Logger logger = LogManager.getLogger(HoodieJavaStreamingApp.class);
+  private static final Logger LOG = LogManager.getLogger(HoodieJavaStreamingApp.class);
 
   public static void main(String[] args) throws Exception {
     HoodieJavaStreamingApp cli = new HoodieJavaStreamingApp();
-    JCommander cmd = new JCommander(cli, args);
+    JCommander cmd = new JCommander(cli, null, args);
 
     if (cli.help) {
       cmd.usage();
@@ -113,9 +114,7 @@ public class HoodieJavaStreamingApp {
   public void run() throws Exception {
     // Spark session setup..
     SparkSession spark = SparkSession.builder().appName("Hoodie Spark Streaming APP")
-        .config("spark.serializer",
-            "org.apache.spark.serializer.KryoSerializer").master("local[1]")
-        .getOrCreate();
+        .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer").master("local[1]").getOrCreate();
     JavaSparkContext jssc = new JavaSparkContext(spark.sparkContext());
 
     // folder path clean up and creation, preparing the environment
@@ -128,41 +127,34 @@ public class HoodieJavaStreamingApp {
     // Generator of some records to be loaded in.
     HoodieTestDataGenerator dataGen = new HoodieTestDataGenerator();
 
-    List<String> records1 = DataSourceTestUtils.convertToStringList(
-        dataGen.generateInserts("001", 100));
+    List<String> records1 = DataSourceTestUtils.convertToStringList(dataGen.generateInserts("001", 100));
     Dataset<Row> inputDF1 = spark.read().json(jssc.parallelize(records1, 2));
 
-    List<String> records2 = DataSourceTestUtils.convertToStringList(
-        dataGen.generateUpdates("002", 100));
+    List<String> records2 = DataSourceTestUtils.convertToStringList(dataGen.generateUpdates("002", 100));
 
     Dataset<Row> inputDF2 = spark.read().json(jssc.parallelize(records2, 2));
 
     // setup the input for streaming
-    Dataset<Row> streamingInput = spark.readStream().schema(inputDF1.schema())
-        .json(streamingSourcePath);
+    Dataset<Row> streamingInput = spark.readStream().schema(inputDF1.schema()).json(streamingSourcePath);
 
 
     // start streaming and showing
     ExecutorService executor = Executors.newFixedThreadPool(2);
 
     // thread for spark strucutured streaming
-    Future<Void> streamFuture = executor.submit(new Callable<Void>() {
-      public Void call() throws Exception {
-        logger.info("===== Streaming Starting =====");
-        stream(streamingInput);
-        logger.info("===== Streaming Ends =====");
-        return null;
-      }
+    Future<Void> streamFuture = executor.submit(() -> {
+      LOG.info("===== Streaming Starting =====");
+      stream(streamingInput);
+      LOG.info("===== Streaming Ends =====");
+      return null;
     });
 
     // thread for adding data to the streaming source and showing results over time
-    Future<Void> showFuture = executor.submit(new Callable<Void>() {
-      public Void call() throws Exception {
-        logger.info("===== Showing Starting =====");
-        show(spark, fs, inputDF1, inputDF2);
-        logger.info("===== Showing Ends =====");
-        return null;
-      }
+    Future<Void> showFuture = executor.submit(() -> {
+      LOG.info("===== Showing Starting =====");
+      show(spark, fs, inputDF1, inputDF2);
+      LOG.info("===== Showing Ends =====");
+      return null;
     });
 
     // let the threads run
@@ -173,28 +165,26 @@ public class HoodieJavaStreamingApp {
   }
 
   /**
-   * Adding data to the streaming source and showing results over time
+   * Adding data to the streaming source and showing results over time.
+   * 
    * @param spark
    * @param fs
    * @param inputDF1
    * @param inputDF2
    * @throws Exception
    */
-  public void show(SparkSession spark,
-                   FileSystem fs,
-                   Dataset<Row> inputDF1,
-                   Dataset<Row> inputDF2) throws Exception {
+  public void show(SparkSession spark, FileSystem fs, Dataset<Row> inputDF1, Dataset<Row> inputDF2) throws Exception {
     inputDF1.write().mode(SaveMode.Append).json(streamingSourcePath);
     // wait for spark streaming to process one microbatch
     Thread.sleep(3000);
     String commitInstantTime1 = HoodieDataSourceHelpers.latestCommit(fs, tablePath);
-    logger.info("First commit at instant time :" + commitInstantTime1);
+    LOG.info("First commit at instant time :" + commitInstantTime1);
 
     inputDF2.write().mode(SaveMode.Append).json(streamingSourcePath);
     // wait for spark streaming to process one microbatch
     Thread.sleep(3000);
     String commitInstantTime2 = HoodieDataSourceHelpers.latestCommit(fs, tablePath);
-    logger.info("Second commit at instant time :" + commitInstantTime1);
+    LOG.info("Second commit at instant time :" + commitInstantTime2);
 
     /**
      * Read & do some queries
@@ -205,62 +195,55 @@ public class HoodieJavaStreamingApp {
         .load(tablePath + "/*/*/*/*");
     hoodieROViewDF.registerTempTable("hoodie_ro");
     spark.sql("describe hoodie_ro").show();
-    // all trips whose fare was greater than 2.
-    spark.sql("select fare, begin_lon, begin_lat, timestamp from hoodie_ro where fare > 2.0")
-        .show();
+    // all trips whose fare amount was greater than 2.
+    spark.sql("select fare.amount, begin_lon, begin_lat, timestamp from hoodie_ro where fare.amount > 2.0").show();
 
     if (tableType.equals(HoodieTableType.COPY_ON_WRITE.name())) {
       /**
        * Consume incrementally, only changes in commit 2 above. Currently only supported for COPY_ON_WRITE TABLE
        */
       Dataset<Row> hoodieIncViewDF = spark.read().format("org.apache.hudi")
-          .option(DataSourceReadOptions.VIEW_TYPE_OPT_KEY(),
-              DataSourceReadOptions.VIEW_TYPE_INCREMENTAL_OPT_VAL())
-          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY(),
-              commitInstantTime1) // Only changes in write 2 above
-          .load(
-              tablePath); // For incremental view, pass in the root/base path of dataset
+          .option(DataSourceReadOptions.QUERY_TYPE_OPT_KEY(), DataSourceReadOptions.QUERY_TYPE_INCREMENTAL_OPT_VAL())
+          // Only changes in write 2 above
+          .option(DataSourceReadOptions.BEGIN_INSTANTTIME_OPT_KEY(), commitInstantTime1)
+          // For incremental view, pass in the root/base path of dataset
+          .load(tablePath);
 
-      logger.info("You will only see records from : " + commitInstantTime2);
+      LOG.info("You will only see records from : " + commitInstantTime2);
       hoodieIncViewDF.groupBy(hoodieIncViewDF.col("_hoodie_commit_time")).count().show();
     }
   }
 
   /**
-   * Hoodie spark streaming job
+   * Hoodie spark streaming job.
+   * 
    * @param streamingInput
    * @throws Exception
    */
   public void stream(Dataset<Row> streamingInput) throws Exception {
 
-    DataStreamWriter<Row> writer = streamingInput
-        .writeStream()
-        .format("org.apache.hudi")
-        .option("hoodie.insert.shuffle.parallelism", "2")
-        .option("hoodie.upsert.shuffle.parallelism", "2")
-        .option(DataSourceWriteOptions.STORAGE_TYPE_OPT_KEY(), tableType)
+    DataStreamWriter<Row> writer = streamingInput.writeStream().format("org.apache.hudi")
+        .option("hoodie.insert.shuffle.parallelism", "2").option("hoodie.upsert.shuffle.parallelism", "2")
+        .option(DataSourceWriteOptions.TABLE_TYPE_OPT_KEY(), tableType)
         .option(DataSourceWriteOptions.RECORDKEY_FIELD_OPT_KEY(), "_row_key")
         .option(DataSourceWriteOptions.PARTITIONPATH_FIELD_OPT_KEY(), "partition")
         .option(DataSourceWriteOptions.PRECOMBINE_FIELD_OPT_KEY(), "timestamp")
-        .option(HoodieWriteConfig.TABLE_NAME, tableName)
-        .option("checkpointLocation", streamingCheckpointingPath)
+        .option(HoodieWriteConfig.TABLE_NAME, tableName).option("checkpointLocation", streamingCheckpointingPath)
         .outputMode(OutputMode.Append());
 
     updateHiveSyncConfig(writer);
-    writer
-        .trigger(new ProcessingTime(500))
-        .start(tablePath)
-        .awaitTermination(streamingDurationInMs);
+    writer.trigger(new ProcessingTime(500)).start(tablePath).awaitTermination(streamingDurationInMs);
   }
 
   /**
-   * Setup configs for syncing to hive
+   * Setup configs for syncing to hive.
+   * 
    * @param writer
    * @return
    */
   private DataStreamWriter<Row> updateHiveSyncConfig(DataStreamWriter<Row> writer) {
     if (enableHiveSync) {
-      logger.info("Enabling Hive sync to " + hiveJdbcUrl);
+      LOG.info("Enabling Hive sync to " + hiveJdbcUrl);
       writer = writer.option(DataSourceWriteOptions.HIVE_TABLE_OPT_KEY(), hiveTable)
           .option(DataSourceWriteOptions.HIVE_DATABASE_OPT_KEY(), hiveDB)
           .option(DataSourceWriteOptions.HIVE_URL_OPT_KEY(), hiveJdbcUrl)
@@ -268,8 +251,8 @@ public class HoodieJavaStreamingApp {
           .option(DataSourceWriteOptions.HIVE_PASS_OPT_KEY(), hivePass)
           .option(DataSourceWriteOptions.HIVE_SYNC_ENABLED_OPT_KEY(), "true");
       if (useMultiPartitionKeys) {
-        writer = writer.option(DataSourceWriteOptions.HIVE_PARTITION_FIELDS_OPT_KEY(), "year,month,day")
-            .option(DataSourceWriteOptions.HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY(),
+        writer = writer.option(DataSourceWriteOptions.HIVE_PARTITION_FIELDS_OPT_KEY(), "year,month,day").option(
+            DataSourceWriteOptions.HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY(),
             MultiPartKeysValueExtractor.class.getCanonicalName());
       } else {
         writer = writer.option(DataSourceWriteOptions.HIVE_PARTITION_FIELDS_OPT_KEY(), "dateStr");
