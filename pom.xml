@@ -1089,6 +1089,14 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>spark-2.4-cloudera2</id>
+      <properties>
+        <cdh.suffix>cloudera2</cdh.suffix>
+        <platform.suffix>-${cdh.suffix}</platform.suffix>
+        <spark.version>2.4.0.${cdh.suffix}</spark.version>
+        </properties>
+    </profile>
   </profiles>
 
   <issueManagement>
