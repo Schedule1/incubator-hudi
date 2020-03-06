@@ -50,7 +50,7 @@
     <module>packaging/hudi-utilities-bundle</module>
     <module>packaging/hudi-timeline-server-bundle</module>
     <module>docker/hoodie/hadoop</module>
-    <module>hudi-integ-test</module>
+<!--    <module>hudi-integ-test</module>-->
   </modules>
 
   <licenses>
@@ -879,6 +879,10 @@
       <id>libs-release</id>
       <url>https://repo.spring.io/libs-release/</url>
     </repository>
+    <repository>
+      <id>cloudera-repo</id>
+      <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+    </repository>
   </repositories>
 
   <profiles>
@@ -1061,7 +1065,14 @@
     <profile>
       <id>scala-2.11</id>
     </profile>
-
+    <profile>
+      <id>spark-2.4-cloudera2</id>
+      <properties>
+        <cdh.suffix>cloudera2</cdh.suffix>
+        <platform.suffix>-${cdh.suffix}</platform.suffix>
+        <spark.version>2.4.0.${cdh.suffix}</spark.version>
+      </properties>
+    </profile>
     <profile>
       <id>scala-2.12</id>
       <properties>
