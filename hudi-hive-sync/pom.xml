@@ -128,6 +128,7 @@
       <groupId>${hive.groupid}</groupId>
       <artifactId>hive-common</artifactId>
       <version>${hive.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Hoodie - Test -->

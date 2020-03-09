@@ -100,6 +100,7 @@
                   <include>org.apache.kafka:kafka-clients</include>
 
                   <include>org.apache.hive:hive-common</include>
+
                   <include>org.apache.hive:hive-service</include>
                   <include>org.apache.hive:hive-service-rpc</include>
                   <include>org.apache.hive:hive-metastore</include>
@@ -249,7 +250,7 @@
       <groupId>${hive.groupid}</groupId>
       <artifactId>hive-common</artifactId>
       <version>${hive.version}</version>
-      <scope>${utilities.bundle.hive.scope}</scope>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
