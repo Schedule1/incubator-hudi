@@ -315,6 +315,11 @@
           <groupId>org.eclipse.jetty.orbit</groupId>
           <artifactId>javax.servlet</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.spark-project.hive</groupId>
+          <artifactId>hive-common</artifactId>
+
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
