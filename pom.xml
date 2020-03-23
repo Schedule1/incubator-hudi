@@ -883,6 +883,10 @@
       <id>cloudera-repo</id>
       <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
     </repository>
+    <repository>
+      <id>cloudera6-repo</id>
+      <url>https://repository.cloudera.com/content/repositories/releases/</url>
+    </repository>
   </repositories>
 
   <profiles>
@@ -1071,6 +1075,14 @@
         <cdh.suffix>cloudera2</cdh.suffix>
         <platform.suffix>-${cdh.suffix}</platform.suffix>
         <spark.version>2.4.0.${cdh.suffix}</spark.version>
+      </properties>
+    </profile>
+    <profile>
+      <id>spark-2.4-cdh6.3.2</id>
+      <properties>
+        <cdh.suffix>cdh6.3.2</cdh.suffix>
+        <platform.suffix>-${cdh.suffix}</platform.suffix>
+        <spark.version>2.4.0-${cdh.suffix}</spark.version>
       </properties>
     </profile>
     <profile>
