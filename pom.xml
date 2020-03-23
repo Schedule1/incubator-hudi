@@ -1088,6 +1088,7 @@
       <properties>
         <cdh.suffix>cdh6.3.2</cdh.suffix>
         <hive.version>2.1.1-cdh6.3.2</hive.version>
+        <hadoop.version>3.0.0-cdh6.3.2</hadoop.version>
         <platform.suffix>-${cdh.suffix}</platform.suffix>
         <spark.version>2.4.0-${cdh.suffix}</spark.version>
       </properties>
